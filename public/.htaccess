@@ -1,0 +1,39 @@
+# V25 — O Legado · Apache (cPanel)
+# Fallback de rotas da SPA: qualquer caminho que não seja ficheiro/pasta real vai para index.html.
+# Se instalar numa subpasta (ex.: /v25/), altere RewriteBase e o build com VITE_BASE_PATH=/v25/.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  # Forçar HTTPS — descomente APENAS depois de confirmar que o certificado SSL está activo.
+  # RewriteCond %{HTTPS} !=on
+  # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+  <FilesMatch "\.(js|css|woff2|avif|webp|jpg|png|svg)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "index\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_mime.c>
+  AddType image/avif .avif
+  AddType image/webp .webp
+  AddType application/manifest+json .webmanifest
+</IfModule>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>
+
+Options -Indexes
