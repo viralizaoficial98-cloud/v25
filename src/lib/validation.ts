@@ -63,11 +63,22 @@ export function validateQuantities(
   return errors;
 }
 
+function readBytes(blob: Blob): Promise<ArrayBuffer> {
+  if (typeof blob.arrayBuffer === 'function') return blob.arrayBuffer();
+  // Navegadores antigos (e jsdom) sem Blob.arrayBuffer
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as ArrayBuffer);
+    r.onerror = () => reject(r.error);
+    r.readAsArrayBuffer(blob);
+  });
+}
+
 /** Valida tipo (pelos bytes iniciais, não só pela extensão) e tamanho do comprovativo. */
 export async function validateProofFile(file: File): Promise<{ ok: true; mime: (typeof PROOF_MIME_TYPES)[number] } | { ok: false; error: string }> {
   if (file.size === 0) return { ok: false, error: 'O ficheiro está vazio.' };
   if (file.size > MAX_PROOF_BYTES) return { ok: false, error: 'O ficheiro excede o limite de 5 MB.' };
-  const head = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+  const head = new Uint8Array(await readBytes(file.slice(0, 8)));
   const is = (...sig: number[]) => sig.every((b, i) => head[i] === b);
   let mime: (typeof PROOF_MIME_TYPES)[number] | null = null;
   if (is(0x25, 0x50, 0x44, 0x46)) mime = 'application/pdf';
@@ -79,7 +90,7 @@ export async function validateProofFile(file: File): Promise<{ ok: true; mime: (
 
 export async function sha256Hex(file: Blob): Promise<string | null> {
   try {
-    const buf = await file.arrayBuffer();
+    const buf = await readBytes(file);
     const hash = await crypto.subtle.digest('SHA-256', buf);
     return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
   } catch {
