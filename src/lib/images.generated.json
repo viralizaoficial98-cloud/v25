@@ -1,0 +1,22 @@
+{
+  "vibes-ao-vivo": {
+    "width": 1280,
+    "height": 853,
+    "widths": [
+      480,
+      828,
+      1280
+    ],
+    "blur": "data:image/webp;base64,UklGRs4AAABXRUJQVlA4IMIAAACwBACdASoYABAAPu1iqU2ppaOiMAgBMB2JQBOmUGMAaR25p5tpxy1hlmjMYP4sAP3rvlC4NJjn0P7daybaBe7nmm1Zhy8vo7Z4ux/EX9y+HW4jmMi7k6Xi9zuxB+/z7Iiqyuz3k+SLEIZG9eVxzi7Rb/4hzh+Qf/0+0ln8ZdLIkohzu6aRD0c4d6YmmDE30UOM9/De62McbXirStS0qo1W3U0gX/EDF7mMgyLIK+KH4mb3Fc2VIDYcp267rPKg5FwAAA=="
+  },
+  "vibes-grupo": {
+    "width": 1200,
+    "height": 936,
+    "widths": [
+      480,
+      828,
+      1200
+    ],
+    "blur": "data:image/webp;base64,UklGRu4AAABXRUJQVlA4IOIAAABQBQCdASoYABMAPu1sqlGppaOiqAqpMB2JQBZwQAsYIGCsldziWLy5ZBP3XUqpE/TlsEAA/N/AeGBIjI39xmQZsYN8oJ0K4znnbtU6vHPfBYr91JL/wVoe/9isR7EZjC6xGb3j3/90vRcLoAy0TZFPjeu/xCgHfFeZ2O5oZO0fUSWPmWx/F5X9D0AolWw1Yqyvv1fLCnAzGHlnfLrD7CPqpys7/ZVYqmRviZtrYxIeeFqXlGv+3LmG8dS8wQDUJDSrm5aAnjPxlFzy9PSNba6842ZWiMqFWoAI4BuzkorAH8AA"
+  }
+}
