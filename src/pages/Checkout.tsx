@@ -10,7 +10,6 @@ import { CONSENT_VERSION } from '@/lib/config';
 import { errorCode, errorMessage } from '@/lib/errors';
 import { formatEventDate, formatEventTime, formatKz } from '@/lib/format';
 import { orderPath, saveOrderAccess } from '@/lib/orderAccess';
-import { isBackendConfigured } from '@/lib/supabase';
 import { normalizePhone, registrationSchema, validateQuantities } from '@/lib/validation';
 import { useAsync } from '@/hooks/useAsync';
 import { useSettings } from '@/hooks/useSettings';
@@ -135,15 +134,6 @@ export default function Checkout() {
     }
   };
 
-  if (!isBackendConfigured) {
-    return (
-      <Shell>
-        <Alert tone="warn" title="Inscrições indisponíveis">
-          A plataforma de pagamentos ainda não está ligada ao servidor (integração pendente). Volte mais tarde.
-        </Alert>
-      </Shell>
-    );
-  }
   if (loading) return <Shell><Spinner label="A preparar a inscrição…" /></Shell>;
   if (loadError) return <Shell><Alert tone="bad">{errorMessage(loadError)}</Alert></Shell>;
   if (!s.sales_open || saleable.length === 0) {

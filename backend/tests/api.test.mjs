@@ -10,6 +10,9 @@ import mysql from 'mysql2/promise';
 import sharp from 'sharp';
 
 const BASE = process.env.V25_BASE;
+// Pastas onde a API grava ficheiros (podem ser as de uma instalação real, ex.: /home/renewangola)
+const PROOFS_DIR = process.env.V25_PROOFS_DIR || path.join(process.env.V25_TMP ?? '', 'storage/proofs');
+const MEDIA_DIR = process.env.V25_MEDIA_DIR || path.join(process.env.V25_TMP ?? '', 'media');
 let db;
 
 // ---------------------------------------------------------------- servidor SMTP de teste
@@ -167,6 +170,13 @@ test('instalação: primeiro administrador exige SETUP_TOKEN e só funciona uma 
   const ok = await c.post('/setup/admin', { setup_token: process.env.SETUP_TOKEN, full_name: 'Administração V25', ...ADMIN });
   assert.equal(ok.status, 200, JSON.stringify(ok.data));
   err(await c.post('/setup/admin', { setup_token: process.env.SETUP_TOKEN, email: 'outro@x.ao', password: 'Outra-senha-123' }), 'INSTALACAO_CONCLUIDA', 409);
+  // Diagnóstico do alojamento (sem Terminal) protegido pelo SETUP_TOKEN
+  err(await c.post('/setup/check', { setup_token: 'errado-errado-errado' }), 'SETUP_TOKEN_INVALIDO', 403);
+  const diag = await c.post('/setup/check', { setup_token: process.env.SETUP_TOKEN });
+  const byName = Object.fromEntries(diag.data.checks.map((x) => [x.check, x]));
+  assert.equal(byName['Ligação MySQL'].ok, true);
+  assert.equal(byName['Migrações aplicadas'].ok, true);
+  assert.equal(byName['Extensão pdo_mysql'].ok, true);
   const [u] = await q('SELECT password_hash FROM users WHERE email = ?', [ADMIN.email]);
   assert.match(u.password_hash, /^\$2y\$|^\$argon2/);
 });
@@ -174,7 +184,7 @@ test('instalação: primeiro administrador exige SETUP_TOKEN e só funciona uma 
 test('autenticação: CSRF, credenciais, cookie seguro e sessão', async () => {
   const c = anon();
   await c.session();
-  err(await c.post('/auth/login', ADMIN, { csrf: false }), 'CSRF_INVALIDO', 419);
+  err(await c.post('/auth/login', ADMIN, { csrf: false }), 'CSRF_INVALIDO', 403);
   err(await c.post('/auth/login', { email: ADMIN.email, password: 'errada-123456' }), 'CREDENCIAIS_INVALIDAS', 401);
   err(await c.post('/auth/login', { email: 'naoexiste@x.ao', password: 'errada-123456' }), 'CREDENCIAIS_INVALIDAS', 401);
   admin = new Client();
@@ -191,7 +201,7 @@ test('autenticação: CSRF, credenciais, cookie seguro e sessão', async () => {
   // pedido de outra origem é recusado
   err(await admin.post('/admin/emails/test', { to: 'x@y.ao' }, { origin: 'https://site-malicioso.example' }), 'ORIGEM_NAO_PERMITIDA', 403);
   // sem token CSRF é recusado mesmo com sessão válida
-  err(await admin.post('/admin/emails/test', { to: 'x@y.ao' }, { csrf: false }), 'CSRF_INVALIDO', 419);
+  err(await admin.post('/admin/emails/test', { to: 'x@y.ao' }, { csrf: false }), 'CSRF_INVALIDO', 403);
 });
 
 test('equipa: administrador cria perfis Financeiro e Check-in; convite por email', async () => {
@@ -315,11 +325,11 @@ test('4. upload seguro do comprovativo (não aprova o pagamento)', async () => {
   assert.deepEqual(o.data.tickets, [], 'o upload NÃO emite ingressos');
   assert.equal((await q("SELECT COUNT(*) n FROM payments"))[0].n, 0, 'o upload NÃO cria pagamento');
   // Ficheiro guardado fora da pasta pública, com o conteúdo exacto
-  const proofsDir = path.join(process.env.V25_TMP, 'storage/proofs');
+  const proofsDir = PROOFS_DIR;
   const [p] = await q('SELECT storage_name, mime_type, sha256 FROM payment_proofs');
   assert.ok(existsSync(path.join(proofsDir, p.storage_name)));
   assert.equal(p.mime_type, 'application/pdf');
-  assert.equal(readdirSync(path.join(process.env.V25_TMP, 'media')).length, 0);
+  assert.equal(readdirSync(MEDIA_DIR).filter((f) => !f.startsWith('.')).length, 0, 'nada gravado na pasta pública');
   // Novo upload não é possível enquanto está em análise
   err(await upload(order.order_code, order.access_token, PNG, 'c.png', 'image/png'), 'ESTADO_INVALIDO', 409);
 });
@@ -577,7 +587,7 @@ test('conteúdos e galeria: upload de imagem, publicação e remoção', async (
   assert.equal(up.status, 201, JSON.stringify(up.data));
   assert.match(up.data.storage_path, /^memorias\/[0-9a-f-]{36}\.(webp|jpg)$/);
   assert.equal(up.data.published, false);
-  assert.ok(existsSync(path.join(process.env.V25_TMP, 'media', up.data.storage_path)));
+  assert.ok(existsSync(path.join(MEDIA_DIR, up.data.storage_path)));
   assert.equal((await anon().get('/public/media?section=memorias')).data.length, 0, 'rascunho não é público');
   await admin.put(`/admin/media/${up.data.id}`, { published: true, caption: 'Legenda' });
   assert.equal((await anon().get('/public/media?section=memorias')).data[0].caption, 'Legenda');
@@ -592,9 +602,9 @@ test('conteúdos e galeria: upload de imagem, publicação e remoção', async (
   assert.equal(tl.status, 201, JSON.stringify(tl.data));
   assert.equal((await anon().get('/public/timeline')).data[0].title, 'Primeiro ensaio');
   await admin.put(`/admin/content/timeline/${tl.data.id}`, { image_path: null });
-  assert.equal(existsSync(path.join(process.env.V25_TMP, 'media', img.data.path)), false, 'imagem antiga removida');
+  assert.equal(existsSync(path.join(MEDIA_DIR, img.data.path)), false, 'imagem antiga removida');
   await admin.del(`/admin/media/${up.data.id}`);
-  assert.equal(existsSync(path.join(process.env.V25_TMP, 'media', up.data.storage_path)), false);
+  assert.equal(existsSync(path.join(MEDIA_DIR, up.data.storage_path)), false);
   err(await admin.post('/admin/content/timeline', { title: 'sem período' }), 'CAMPO_OBRIGATORIO', 422);
 });
 

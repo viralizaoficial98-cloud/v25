@@ -1,9 +1,0 @@
-# Configuração mínima para a Supabase CLI (supabase link / db push / functions deploy)
-project_id = "v25-o-legado"
-
-[auth]
-# Sem registo público: as contas da equipa são criadas/convidadas pelo administrador.
-enable_signup = false
-
-[functions.send-emails]
-verify_jwt = true

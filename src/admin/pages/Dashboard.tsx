@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/misc';
-import { requireSupabase } from '@/lib/supabase';
+import { api } from '@/lib/http';
 import { formatKz } from '@/lib/format';
 import { useAsync } from '@/hooks/useAsync';
 import { Loadable, PageHeader, Panel, Table, Td } from '../ui';
@@ -25,11 +25,7 @@ interface Stats {
 
 export default function Dashboard() {
   const { role } = useAdmin();
-  const { data, loading, error, reload } = useAsync(async () => {
-    const { data, error } = await requireSupabase().rpc('admin_dashboard');
-    if (error) throw error;
-    return data as Stats;
-  }, []);
+  const { data, loading, error, reload } = useAsync(() => api<Stats>('/admin/dashboard'), []);
 
   const finance = role === 'admin' || role === 'financeiro';
   const cards = data

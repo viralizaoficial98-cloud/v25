@@ -3,8 +3,8 @@ import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, Badge } from '@/components/ui/misc';
 import { Dialog } from '@/components/ui/dialog';
-import { requireSupabase } from '@/lib/supabase';
-import { errorMessage, UserError } from '@/lib/errors';
+import { api } from '@/lib/http';
+import { errorMessage } from '@/lib/errors';
 import { formatDateTime, formatKz, fromLuandaInput, toLuandaInput } from '@/lib/format';
 import type { TicketTypeRow } from '@/lib/types';
 import { useAsync } from '@/hooks/useAsync';
@@ -33,13 +33,8 @@ const EMPTY: Draft = {
 };
 
 export default function TicketTypes() {
-  const sb = requireSupabase();
   const { settings, reload: reloadSettings } = useSettings();
-  const { data = [], loading, error, reload } = useAsync(async () => {
-    const { data, error } = await sb.from('ticket_types').select('*').order('sort_order').order('created_at');
-    if (error) throw error;
-    return data as TicketTypeRow[];
-  }, []);
+  const { data = [], loading, error, reload } = useAsync(() => api<TicketTypeRow[]>('/admin/ticket-types'), []);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -82,11 +77,8 @@ export default function TicketTypes() {
     };
     setBusy(true);
     try {
-      const { error } = draft.id ? await sb.from('ticket_types').update(row).eq('id', draft.id) : await sb.from('ticket_types').insert(row);
-      if (error) {
-        if (/stock_ok/.test(error.message)) throw new UserError('A quantidade total não pode ser inferior aos lugares já reservados/vendidos.');
-        throw error;
-      }
+      if (draft.id) await api(`/admin/ticket-types/${draft.id}`, { method: 'PUT', json: row });
+      else await api('/admin/ticket-types', { json: row });
       setDraft(null);
       setMsg('Ingresso guardado.');
       await reload();
@@ -99,14 +91,22 @@ export default function TicketTypes() {
 
   const remove = async (t: TicketTypeRow) => {
     if (!confirm(`Eliminar a categoria "${t.name}"? Só é possível se não tiver pedidos.`)) return;
-    const { error, count } = await sb.from('ticket_types').delete({ count: 'exact' }).eq('id', t.id);
-    setMsg(error ? errorMessage(error) : count ? 'Categoria eliminada.' : 'Não é possível eliminar: existem pedidos associados. Despublique em vez de eliminar.');
+    try {
+      await api(`/admin/ticket-types/${t.id}`, { method: 'DELETE' });
+      setMsg('Categoria eliminada.');
+    } catch (e) {
+      setMsg(errorMessage(e));
+    }
     await reload();
   };
 
   const toggleSales = async (v: boolean) => {
-    const { error } = await sb.from('event_settings').update({ sales_open: v }).eq('id', 1);
-    setMsg(error ? errorMessage(error) : v ? 'Vendas abertas.' : 'Vendas fechadas.');
+    try {
+      await api('/admin/settings', { method: 'PUT', json: { sales_open: v } });
+      setMsg(v ? 'Vendas abertas.' : 'Vendas fechadas.');
+    } catch (e) {
+      setMsg(errorMessage(e));
+    }
     await reloadSettings();
   };
 

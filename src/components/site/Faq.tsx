@@ -3,10 +3,9 @@ import { ChevronDown } from 'lucide-react';
 import { SectionHeading, Spinner } from '@/components/ui/misc';
 import { fetchFaqs } from '@/lib/api';
 import { useAsync } from '@/hooks/useAsync';
-import { isBackendConfigured } from '@/lib/supabase';
 import type { Faq as FaqT } from '@/lib/types';
 
-/** Usado apenas quando o backend ainda não está configurado (mesmo conteúdo do seed). */
+/** Usado apenas se a API estiver indisponível (mesmo conteúdo do seed). */
 const FALLBACK: Pick<FaqT, 'id' | 'question' | 'answer'>[] = [
   {
     id: 'f1',
@@ -22,14 +21,14 @@ const FALLBACK: Pick<FaqT, 'id' | 'question' | 'answer'>[] = [
 ];
 
 export function Faq() {
-  const { data, loading } = useAsync(fetchFaqs, []);
-  const faqs = isBackendConfigured ? (data ?? []) : FALLBACK;
+  const { data, loading, error } = useAsync(fetchFaqs, []);
+  const faqs = error ? FALLBACK : (data ?? []);
 
   return (
     <section id="faq" className="section" aria-labelledby="faq-titulo">
       <div className="container max-w-3xl">
         <SectionHeading eyebrow="Perguntas frequentes" title={<span id="faq-titulo">Tudo o que precisa de saber</span>} />
-        {loading && isBackendConfigured ? (
+        {loading ? (
           <div className="flex justify-center"><Spinner /></div>
         ) : (
           <A.Root type="single" collapsible className="divide-y divide-white/10 rounded-3xl border border-gold/15 bg-ink-800/50">

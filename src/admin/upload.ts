@@ -1,52 +1,54 @@
-import { requireSupabase } from '@/lib/supabase';
+import { api } from '@/lib/http';
 import { UserError } from '@/lib/errors';
-
-function uid() {
-  return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
+import type { MediaItem } from '@/lib/types';
 
 /**
- * Optimiza uma fotografia no navegador antes do envio: apenas redimensiona (máx. 2400 px
- * no lado maior, sem recortes nem alteração de proporções) e converte para WebP.
+ * Reduz fotografias grandes no navegador antes do envio (apenas redimensiona, sem recortes).
+ * O servidor volta a validar e re-codificar a imagem.
  */
-async function optimizeImage(file: File): Promise<{ blob: Blob; width: number; height: number; type: string; ext: string }> {
-  const bitmap = await createImageBitmap(file);
-  const max = 2400;
-  const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
-  const width = Math.round(bitmap.width * scale);
-  const height = Math.round(bitmap.height * scale);
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
-  const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/webp', 0.85));
-  if (blob && blob.type === 'image/webp') return { blob, width, height, type: 'image/webp', ext: 'webp' };
-  // Navegadores sem codificador WebP: envia o original
-  return { blob: file, width, height, type: file.type, ext: file.name.split('.').pop() || 'jpg' };
-}
-
-export async function uploadMedia(file: File, folder: string): Promise<{ path: string; width: number | null; height: number | null; kind: 'foto' | 'video' }> {
-  const sb = requireSupabase();
-  if (file.type.startsWith('video/')) {
-    if (!['video/mp4', 'video/webm'].includes(file.type)) throw new UserError('Vídeo deve ser MP4 ou WebM.');
-    if (file.size > 50 * 1024 * 1024) throw new UserError('Vídeo excede 50 MB. Para vídeos longos use o YouTube.');
-    const path = `${folder}/${uid()}.${file.type === 'video/webm' ? 'webm' : 'mp4'}`;
-    const { error } = await sb.storage.from('media').upload(path, file, { contentType: file.type, cacheControl: '31536000' });
-    if (error) throw error;
-    return { path, width: null, height: null, kind: 'video' };
+async function shrinkImage(file: File): Promise<File> {
+  if (typeof createImageBitmap !== 'function' || file.size < 1.5 * 1024 * 1024) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.9));
+    return blob ? new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }) : file;
+  } catch {
+    return file;
   }
-  if (!['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(file.type)) throw new UserError('Formato de imagem não suportado.');
-  const img = await optimizeImage(file);
-  const path = `${folder}/${uid()}.${img.ext}`;
-  const { error } = await sb.storage.from('media').upload(path, img.blob, { contentType: img.type, cacheControl: '31536000' });
-  if (error) throw error;
-  return { path, width: img.width, height: img.height, kind: 'foto' };
 }
 
-export async function removeMedia(path: string | null | undefined) {
-  if (!path) return;
-  await requireSupabase().storage.from('media').remove([path]);
+function checkFile(file: File, allowVideo: boolean) {
+  if (file.type.startsWith('video/')) {
+    if (!allowVideo || !['video/mp4', 'video/webm'].includes(file.type)) throw new UserError('Vídeo deve ser MP4 ou WebM.');
+    if (file.size > 50 * 1024 * 1024) throw new UserError('Vídeo excede 50 MB. Para vídeos longos use o YouTube.');
+    return;
+  }
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new UserError('Formato de imagem não suportado (JPG, PNG ou WebP).');
+}
+
+/** Galeria (secções "grupo" e "memorias"): cria o item em rascunho. */
+export async function uploadMediaItem(file: File, section: MediaItem['section'], title: string): Promise<MediaItem> {
+  checkFile(file, true);
+  const form = new FormData();
+  form.append('file', file.type.startsWith('image/') ? await shrinkImage(file) : file);
+  form.append('section', section);
+  form.append('title', title);
+  return api<MediaItem>('/admin/media/upload', { form });
+}
+
+/** Imagem para linha do tempo / integrantes: devolve o caminho a guardar no conteúdo. */
+export async function uploadImage(file: File, folder: 'historia' | 'integrantes'): Promise<{ path: string; width: number; height: number }> {
+  checkFile(file, false);
+  const form = new FormData();
+  form.append('file', await shrinkImage(file));
+  form.append('folder', folder);
+  return api('/admin/uploads/image', { form });
 }
 
 export function youtubeId(input: string): string | null {

@@ -4,7 +4,7 @@ import { CrudPage } from '../Crud';
 export default function MembersAdmin() {
   return (
     <CrudPage
-      table="members"
+      type="members"
       title="Integrantes"
       description="Apresente integrantes actuais e antigos membros. Use apenas fotografias reais fornecidas pelo grupo."
       empty="Ainda não foram adicionados integrantes."

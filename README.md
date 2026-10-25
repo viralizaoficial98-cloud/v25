@@ -3,88 +3,97 @@
 Plataforma oficial do evento de celebração dos **25 anos do Vibes – Grupo Vocal**
 — 20 de Dezembro de 2026, 16h00, Hotel Brisa Tropical, Morro Bento, Luanda.
 
-Divulgação do evento, inscrição, pagamento manual por transferência, validação de
-comprovativos, emissão de ingressos digitais com QR Code assinado, check-in e gestão
-administrativa.
+Divulgação do evento, inscrição, pagamento manual por transferência bancária ou
+Transferência Express, validação de comprovativos pela equipa financeira, ingressos digitais
+com QR Code assinado (PDF e email), check-in com bloqueio de reutilização e painel administrativo.
+
+Alojamento: **cPanel da Renew Angola** (`renewangola.online`) com **PHP + MySQL** — sem Node.js
+no servidor. (Migrado de Supabase: ver [`docs/MIGRACAO_SUPABASE_MYSQL.md`](docs/MIGRACAO_SUPABASE_MYSQL.md).)
 
 ## Stack
 
 | Camada | Tecnologia |
 |---|---|
-| Frontend | React 18 + TypeScript + Vite, Tailwind CSS, componentes no estilo shadcn/ui (Radix), Framer Motion, Lucide |
-| Backend | Supabase: PostgreSQL (RLS + funções transaccionais), Auth, Storage, Edge Function (Deno) |
-| PDF / QR | jsPDF, qrcode; leitura de QR com jsQR + câmara (getUserMedia) |
-| Alojamento | build estático (cPanel/Apache) + Supabase externo |
+| Frontend | React 18 + TypeScript + Vite, Tailwind CSS, componentes estilo shadcn/ui (Radix), Framer Motion, Lucide |
+| API | PHP 8.1+ (REST JSON em `/api`), PDO MySQL, sessões seguras, PHPMailer, FPDF, chillerlan/php-qrcode |
+| Base de dados | MySQL 8 / MariaDB 10.4+ (InnoDB, utf8mb4) — base `renewangola_v25` |
+| Alojamento | Apache 2.4 (cPanel) + `.htaccess`; cron do cPanel para emails |
 
 ## Estrutura
 
 ```
-src/
-  pages/            Landing, Checkout, Pedido (/pedido/:code#t=token), Consultar, Legal
-  components/site/  Secções da landing (Hero, Sobre, História, Grupo, Informações, Ingressos, Memórias, FAQ, Rodapé)
-  components/order/ Cartão bancário, upload de comprovativo, ingressos (QR + PDF)
-  admin/            Painel (/admin) com perfis Administrador, Financeiro e Check-in
-  lib/              API, validação, formatação (Kz, fuso Africa/Luanda), erros, PDF
-supabase/
-  migrations/       Esquema, RPCs (compra, aprovação, emissão, check-in), RLS e storage
-  functions/        send-emails (fila → SMTP) + templates partilhados
-  seed.sql          Dados oficiais (sem preços inventados)
-  tests/            Testes de integração PostgreSQL
-assets/originals/   Fotografias oficiais (originais) → `npm run images` gera WebP/AVIF
-docs/DEPLOY.md      Supabase, variáveis, cPanel, DNS, HTTPS e SMTP
+src/                    Frontend (inalterado no design)
+  lib/http.ts           Cliente da API (CSRF, erros)
+  lib/api.ts            Chamadas públicas (pedidos, comprovativos, PDF)
+  admin/                Painel /admin (sessão, permissões, páginas)
+backend/
+  app/                  → /home/renewangola/v25_app (PRIVADO, fora de public_html)
+    src/                API: Auth, Http, Services, Mail, Support
+    routes.php          Todas as rotas REST
+    database/           migrations/ + v25_mysql_schema.sql (phpMyAdmin)
+    bin/                migrate, cron, check-environment, create-admin, generate-key
+    storage/            comprovativos, sessões, logs (privado)
+    .env.example        Configuração (sem segredos)
+  public/               → /home/renewangola/public_html
+    api/                index.php (único ponto de entrada) + .htaccess + .user.ini
+    uploads/            galeria (sem execução de scripts)
+  tests/                Testes de integração da API + router de testes
+public/                 Ficheiros estáticos do site e .htaccess principal
+scripts/                build:deploy, build:schema, test:api, test:e2e
+docs/                   Instalação, base de dados, segurança, API, testes, pendentes
 ```
 
 ## Desenvolvimento
 
 ```bash
 npm install
-cp .env.example .env     # preencher VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
-npm run dev
+cd backend/app && composer install && cp .env.example .env   # DB_*, APP_KEY, APP_URL=http://localhost:5173,
+                                                             # MEDIA_PATH=<repo>/backend/public/uploads/media
+php bin/migrate.php                                          # cria as tabelas
+cd ../.. && npm run api:dev     # API PHP em http://127.0.0.1:8080 (terminal 1)
+npm run dev                     # Vite com proxy /api → 8080 (terminal 2)
 ```
-
-Sem `.env`, o site funciona em modo de divulgação: mostra a identidade do evento e
-“A AGUARDAR ABERTURA DAS VENDAS”; o checkout e o painel indicam *integração pendente*
-(nenhuma operação é simulada).
 
 ## Testes
 
 ```bash
-npm test          # Vitest: validação, datas/fuso, Kz, CSV, upload, templates de email, secções
-npm run test:db   # PostgreSQL real (cria cluster temporário; ou TEST_DATABASE_URL=...)
+npm test            # frontend (Vitest)
+npm run test:api    # API PHP + MySQL/MariaDB reais (cria uma BD temporária)
+npm run test:e2e    # fluxo completo pela interface (build + API + BD + Chromium)
 npm run typecheck
 ```
 
-`test:db` cobre: RLS (anon sem acesso a dados pessoais), validação no backend, idempotência
-e pedidos duplicados, upload seguro (slot único, bucket privado), aprovação/rejeição com
-permissões, valor e referência bancária únicos, emissão de ingressos, QR sem dados pessoais,
-check-in com bloqueio de reutilização e assinatura adulterada, cancelamento, expiração de
-reservas, rate limiting, **stock concorrente** (20 compras paralelas para 5 lugares) e
-**aprovações concorrentes** do mesmo pedido.
+`test:api`/`test:e2e` precisam de PHP 8.1+ com `pdo_mysql` e de um MySQL/MariaDB local
+(ligação de administração por `TEST_MYSQL_SOCKET` ou `TEST_MYSQL_HOST/USER/PASSWORD`).
+Resultados: [`docs/RELATORIO_TESTES.md`](docs/RELATORIO_TESTES.md).
 
-## Fluxo de pagamento
+## Deploy no cPanel
 
-1. Cliente escolhe a categoria → o sistema calcula o total (preço definido no painel).
-2. Inscrição → pedido com código único `V25-XXXXXX` e reserva de stock com prazo.
-3. Página privada do pedido (token no fragmento `#t=`, nunca enviado ao servidor web) com dados bancários e botões de cópia.
-4. Upload do comprovativo (PDF/JPG/PNG ≤ 5 MB, verificado por assinatura de bytes) para bucket **privado**.
-5. Pedido passa a *Comprovativo enviado* → *Em análise* — **isto não confirma o pagamento**.
-6. Financeiro confere no banco e aprova indicando a referência da transacção e o valor
-   (referência não reutilizável; valor tem de coincidir) ou rejeita com motivo.
-7. Só após aprovação são emitidos os ingressos (um QR por ingresso, assinado por HMAC).
+```bash
+npm ci && npm run build:deploy
+# deploy/v25-public_html.zip → public_html
+# deploy/v25_app.zip         → /home/renewangola/v25_app
+# deploy/v25_mysql_schema.sql → phpMyAdmin (renewangola_v25)
+```
 
-## Segurança
+Guia completo: [`docs/INSTALACAO_CPANEL.md`](docs/INSTALACAO_CPANEL.md).
 
-- Chave `service_role` nunca no frontend; credenciais SMTP apenas em *secrets* da Edge Function.
-- RLS em todas as tabelas; escrita de pedidos/ingressos apenas por funções `SECURITY DEFINER`
-  com verificação de perfil no servidor e bloqueios de linha (`FOR UPDATE`).
-- Comprovativos: bucket privado, upload só para um caminho pré-autorizado e de uso único,
-  leitura por URL assinado temporário (5 min) apenas para Administrador/Financeiro.
-- Tokens de acesso guardados como hash SHA-256; QR Codes contêm só `V25:<código>:<assinatura>`.
-- Auditoria de aprovações, rejeições, cancelamentos, preços, configurações e equipa.
+## Documentação
 
-## Pendências que dependem da organização
+| Documento | Conteúdo |
+|---|---|
+| [INSTALACAO_CPANEL.md](docs/INSTALACAO_CPANEL.md) | Instalação, `.env`, permissões, HTTPS, DNS, SMTP, cron, actualizações, backups |
+| [BASE_DE_DADOS.md](docs/BASE_DE_DADOS.md) | Esquema, importação, migrações, consultas, backup |
+| [SEGURANCA.md](docs/SEGURANCA.md) | Checklist de segurança |
+| [API.md](docs/API.md) | Endpoints e permissões |
+| [RELATORIO_TESTES.md](docs/RELATORIO_TESTES.md) | Testes executados e o que falta validar em produção |
+| [PENDENTES.md](docs/PENDENTES.md) | Configurações ainda por fazer |
+| [MIGRACAO_SUPABASE_MYSQL.md](docs/MIGRACAO_SUPABASE_MYSQL.md) | Análise e mapeamento da migração |
 
-- Preços, categorias e lotes (painel → *Ingressos*); as vendas estão **fechadas** por omissão.
-- Marcos da linha do tempo, integrantes, fotografias e vídeos adicionais (painel).
-- Confirmação do número Transferência Express (`920000000`, conforme briefing) e da localização exacta.
-- Credenciais SMTP e domínio final; redes sociais; textos legais revistos.
+## Regras de negócio essenciais
+
+- O envio de um comprovativo **nunca** confirma o pagamento.
+- Os ingressos só são emitidos depois de a equipa financeira confirmar a transferência
+  (referência bancária única + valor igual ao total).
+- Cada QR Code é individual, assinado e válido para uma única entrada.
+- Sem preços publicados, o site mostra “A AGUARDAR ABERTURA DAS VENDAS”.

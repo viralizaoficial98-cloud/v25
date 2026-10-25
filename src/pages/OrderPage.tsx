@@ -147,7 +147,7 @@ export default function OrderPage() {
             <Alert tone="ok" title="Pagamento aprovado">Os seus ingressos estão a ser emitidos. Actualize a página dentro de instantes.</Alert>
           )}
 
-          {order.status === 'emitido' && order.tickets.length > 0 && <TicketList order={order} settings={settings} />}
+          {order.status === 'emitido' && order.tickets.length > 0 && <TicketList order={order} settings={settings} token={token} />}
 
           {order.proofs.length > 0 && (
             <div>

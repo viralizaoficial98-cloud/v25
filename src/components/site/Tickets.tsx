@@ -8,7 +8,6 @@ import { fetchTicketTypes } from '@/lib/api';
 import { formatDateTime, formatKz } from '@/lib/format';
 import { useAsync } from '@/hooks/useAsync';
 import { useSettings } from '@/hooks/useSettings';
-import { isBackendConfigured } from '@/lib/supabase';
 import { errorMessage } from '@/lib/errors';
 
 export function Tickets() {
@@ -30,7 +29,7 @@ export function Tickets() {
           <div className="flex justify-center"><Spinner label="A carregar ingressos…" /></div>
         ) : error ? (
           <Alert tone="bad" title="Não foi possível carregar os ingressos" className="mx-auto max-w-xl">{errorMessage(error)}</Alert>
-        ) : !isBackendConfigured || data.length === 0 || !s.sales_open ? (
+        ) : data.length === 0 || !s.sales_open ? (
           <div className="mx-auto max-w-2xl">
             <EmptyState icon={<Hourglass className="h-9 w-9" />} title={s.sales_closed_message || 'A AGUARDAR ABERTURA DAS VENDAS'}>
               Os tipos de ingresso e preços serão anunciados em breve. Acompanhe as nossas redes sociais para saber quando abrem as vendas.

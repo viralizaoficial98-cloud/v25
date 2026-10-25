@@ -108,7 +108,7 @@ final class Auth
     {
         $sent = (string) ($req->header('x-csrf-token') ?? '');
         if ($sent === '' || empty($_SESSION['csrf']) || !hash_equals((string) $_SESSION['csrf'], $sent)) {
-            throw new ApiError('CSRF_INVALIDO', 419);
+            throw new ApiError('CSRF_INVALIDO', 403); // 403 (não 419: o Apache converte códigos desconhecidos em 500)
         }
     }
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { requireSupabase } from '@/lib/supabase';
+import { api } from '@/lib/http';
 import { formatDateTime } from '@/lib/format';
 import { useAsync } from '@/hooks/useAsync';
 import { Loadable, PageHeader, Panel, Table, Td } from '../ui';
@@ -12,15 +12,7 @@ const PAGE = 50;
 export default function AuditLog() {
   const [page, setPage] = useState(0);
   const [open, setOpen] = useState<number | null>(null);
-  const { data, loading, error } = useAsync(async () => {
-    const { data, error, count } = await requireSupabase()
-      .from('audit_log')
-      .select('*', { count: 'exact' })
-      .order('id', { ascending: false })
-      .range(page * PAGE, page * PAGE + PAGE - 1);
-    if (error) throw error;
-    return { rows: data as Entry[], count: count ?? 0 };
-  }, [page]);
+  const { data, loading, error } = useAsync(() => api<{ rows: Entry[]; count: number }>(`/admin/audit?page=${page}`), [page]);
   const pages = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE));
 
   return (

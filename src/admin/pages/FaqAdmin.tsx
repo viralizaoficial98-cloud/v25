@@ -3,7 +3,7 @@ import { CrudPage } from '../Crud';
 export default function FaqAdmin() {
   return (
     <CrudPage
-      table="faqs"
+      type="faqs"
       title="Perguntas frequentes"
       description="Edite as regras do evento (reembolsos, crianças, dress code, estacionamento…) à medida que forem confirmadas."
       empty="Sem perguntas."

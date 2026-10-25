@@ -116,6 +116,17 @@ $r->post('/auth/password', function (Request $q) {
     Audit::log('auth.palavra_passe_alterada', 'user', $u['id']);
     return ['ok' => true, 'csrf_token' => Auth::csrfToken()];
 });
+// Diagnóstico do alojamento sem Terminal: só com o SETUP_TOKEN do .env (desactiva-se ao apagá-lo)
+$r->post('/setup/check', function (Request $q) {
+    RateLimiter::hit('setup_check', $q->ip(), 10, 3600);
+    $expected = \App\Support\Env::get('SETUP_TOKEN', '');
+    if ($expected === '' || strlen($expected) < 16 || !hash_equals($expected, (string) $q->input('setup_token', ''))) {
+        throw new ApiError('SETUP_TOKEN_INVALIDO', 403);
+    }
+    $checks = \App\Support\Diagnostics::run();
+    $checks[] = ['check' => 'Pedido recebido por HTTPS', 'ok' => $q->isHttps(), 'detail' => $q->isHttps() ? 'sim' : 'não — active o SSL (AutoSSL)', 'required' => false];
+    return ['checks' => $checks];
+});
 $r->post('/setup/admin', function (Request $q) {
     Auth::start($q);
     Auth::verifyCsrf($q);

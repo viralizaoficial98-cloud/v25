@@ -1,6 +1,34 @@
 /** Mensagens em português para os códigos de erro devolvidos pelas funções da base de dados. */
 const MESSAGES: Record<string, string> = {
-  BACKEND_NAO_CONFIGURADO: 'A plataforma ainda não está ligada ao servidor. Tente novamente mais tarde.',
+  SEM_LIGACAO: 'Sem ligação ao servidor. Verifique a sua internet e tente novamente.',
+  API_NAO_INSTALADA: 'A plataforma está em manutenção. Tente novamente mais tarde.',
+  ERRO_INTERNO: 'Ocorreu um erro no servidor. Tente novamente dentro de instantes.',
+  NAO_ENCONTRADO: 'Não encontrado.',
+  CSRF_INVALIDO: 'A sessão expirou. Actualize a página e tente novamente.',
+  ORIGEM_NAO_PERMITIDA: 'Pedido recusado por segurança.',
+  CREDENCIAIS_INVALIDAS: 'Email ou palavra-passe incorrectos.',
+  CONTA_BLOQUEADA: 'Demasiadas tentativas falhadas. A conta fica bloqueada durante 15 minutos.',
+  PALAVRA_PASSE_FRACA: 'A palavra-passe deve ter pelo menos 10 caracteres, com letras e números.',
+  TOKEN_INVALIDO: 'Esta ligação expirou ou já foi utilizada. Peça uma nova.',
+  SETUP_TOKEN_INVALIDO: 'Código de instalação inválido (SETUP_TOKEN do ficheiro .env).',
+  INSTALACAO_CONCLUIDA: 'A instalação já foi concluída. Inicie sessão.',
+  UTILIZADOR_JA_EXISTE: 'Já existe um utilizador com este email.',
+  ULTIMO_ADMINISTRADOR: 'Tem de existir pelo menos um administrador activo.',
+  PRECO_OBRIGATORIO_PARA_PUBLICAR: 'Para publicar, defina um preço válido em Kz.',
+  PRECO_INVALIDO: 'Preço inválido.',
+  STOCK_INFERIOR_AO_VENDIDO: 'A quantidade total não pode ser inferior aos lugares já reservados/vendidos.',
+  CATEGORIA_COM_PEDIDOS: 'Não é possível eliminar: existem pedidos associados. Despublique em vez de eliminar.',
+  VALOR_INVALIDO: 'Valor inválido.',
+  DATA_INVALIDA: 'Data inválida.',
+  PERIODO_INVALIDO: 'O fim das vendas tem de ser posterior ao início.',
+  TEXTO_DEMASIADO_LONGO: 'Texto demasiado longo.',
+  CAMPO_OBRIGATORIO: 'Preencha os campos obrigatórios.',
+  URL_INVALIDO: 'Ligação inválida (deve começar por https://).',
+  YOUTUBE_INVALIDO: 'Ligação do YouTube inválida.',
+  IMAGEM_INVALIDA: 'Imagem inválida.',
+  PASTA_INVALIDA: 'Destino de upload inválido.',
+  FICHEIRO_EM_FALTA: 'O ficheiro não foi encontrado no servidor.',
+  METODO_NAO_PERMITIDO: 'Operação não permitida.',
   PEDIDO_INVALIDO: 'Pedido inválido. Actualize a página e tente novamente.',
   CONSENTIMENTO_OBRIGATORIO: 'É necessário aceitar a utilização dos dados pessoais para concluir a inscrição.',
   NOME_INVALIDO: 'Indique o seu nome completo (nome e apelido).',
@@ -31,8 +59,7 @@ const MESSAGES: Record<string, string> = {
   MOTIVO_OBRIGATORIO: 'Indique o motivo (mínimo 5 caracteres).',
   INGRESSO_JA_UTILIZADO: 'Não é possível cancelar: há ingressos deste pedido já utilizados.',
   PERFIL_INVALIDO: 'Perfil inválido.',
-  UTILIZADOR_INEXISTENTE:
-    'Não existe utilizador com esse email. Crie-o primeiro em Supabase → Authentication → Users (ou convide-o).',
+  UTILIZADOR_INEXISTENTE: 'Utilizador não encontrado.',
   NAO_PODE_REMOVER_PROPRIO: 'Não pode retirar o seu próprio perfil de administrador.',
 };
 
@@ -47,15 +74,14 @@ export function errorMessage(err: unknown): string {
       : err && typeof err === 'object' && 'message' in err
         ? String((err as { message: unknown }).message)
         : '';
-  const code = Object.keys(MESSAGES).find((k) => raw === k || raw.includes(k));
+  if (MESSAGES[raw]) return MESSAGES[raw];
+  const code = Object.keys(MESSAGES).find((k) => raw.includes(k));
   if (code) return MESSAGES[code];
   if (/Failed to fetch|NetworkError|network/i.test(raw)) return 'Sem ligação ao servidor. Verifique a sua internet.';
-  if (/Invalid login credentials/i.test(raw)) return 'Email ou palavra-passe incorrectos.';
-  if (/row-level security|permission denied/i.test(raw)) return MESSAGES.SEM_PERMISSAO;
   return 'Ocorreu um erro inesperado. Tente novamente.';
 }
 
 export function errorCode(err: unknown): string | null {
   const raw = err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : String(err ?? '');
-  return Object.keys(MESSAGES).find((k) => raw.includes(k)) ?? null;
+  return MESSAGES[raw] ? raw : (Object.keys(MESSAGES).find((k) => raw.includes(k)) ?? null);
 }

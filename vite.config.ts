@@ -18,6 +18,13 @@ export default defineConfig(({ mode }) => {
       },
     ],
     resolve: { alias: { '@': path.resolve(__dirname, 'src') } },
+    // Desenvolvimento: encaminha /api e /uploads para a API PHP local (ex.: npm run api:dev)
+    server: {
+      proxy: {
+        '/api': { target: env.V25_API_PROXY || 'http://127.0.0.1:8080', changeOrigin: false },
+        '/uploads': { target: env.V25_API_PROXY || 'http://127.0.0.1:8080', changeOrigin: false },
+      },
+    },
     build: {
       target: 'es2020',
       sourcemap: false,
@@ -26,7 +33,6 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             react: ['react', 'react-dom', 'react-router-dom'],
             motion: ['framer-motion'],
-            supabase: ['@supabase/supabase-js'],
           },
         },
       },
@@ -35,7 +41,7 @@ export default defineConfig(({ mode }) => {
       globals: true,
       environment: 'jsdom',
       setupFiles: ['./src/test/setup.ts'],
-      include: ['src/**/*.test.{ts,tsx}', 'supabase/functions/_shared/**/*.test.ts'],
+      include: ['src/**/*.test.{ts,tsx}'],
     },
   };
 });

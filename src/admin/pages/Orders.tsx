@@ -3,7 +3,7 @@ import { AlertTriangle, ChevronLeft, ChevronRight, Eye, Link2, Search } from 'lu
 import { Button } from '@/components/ui/button';
 import { Alert, CopyButton, StatusBadge } from '@/components/ui/misc';
 import { Dialog } from '@/components/ui/dialog';
-import { requireSupabase } from '@/lib/supabase';
+import { api, API_BASE } from '@/lib/http';
 import { errorMessage } from '@/lib/errors';
 import { formatDateTime, formatKz } from '@/lib/format';
 import { ORDER_STATUS } from '@/lib/status';
@@ -14,7 +14,7 @@ import { Label, Loadable, PageHeader, Panel, Table, Td } from '../ui';
 import { useAdmin } from '../session';
 
 const PAGE = 25;
-type Row = OrderRow & { ticket_types: { name: string; lot_label: string } | null };
+type Row = OrderRow & { ticket_types: { name: string; lot_label: string } | null; payment_method?: string | null; payment_status?: string | null };
 
 export default function Orders({ preset }: { preset?: 'review' }) {
   const [status, setStatus] = useState<string>(preset === 'review' ? 'review' : 'all');
@@ -25,19 +25,9 @@ export default function Orders({ preset }: { preset?: 'review' }) {
 
   useEffect(() => setStatus(preset === 'review' ? 'review' : 'all'), [preset]);
 
-  const { data, loading, error, reload } = useAsync(async () => {
-    let req = requireSupabase()
-      .from('orders')
-      .select('*, ticket_types(name, lot_label)', { count: 'exact' })
-      .order(status === 'review' ? 'updated_at' : 'created_at', { ascending: status === 'review' })
-      .range(page * PAGE, page * PAGE + PAGE - 1);
-    if (status === 'review') req = req.in('status', ['comprovativo_enviado', 'em_analise']);
-    else if (status !== 'all') req = req.eq('status', status);
-    const term = query.replace(/[,()%*]/g, ' ').trim();
-    if (term) req = req.or(`order_code.ilike.%${term}%,full_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`);
-    const { data, error, count } = await req;
-    if (error) throw error;
-    return { rows: data as Row[], count: count ?? 0 };
+  const { data, loading, error, reload } = useAsync(() => {
+    const qs = new URLSearchParams({ status, q: query.trim(), page: String(page), page_size: String(PAGE) });
+    return api<{ rows: Row[]; count: number }>(`/admin/orders?${qs}`);
   }, [status, query, page]);
 
   const pages = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE));
@@ -108,27 +98,21 @@ export default function Orders({ preset }: { preset?: 'review' }) {
   );
 }
 
-interface Proof { id: string; storage_path: string; mime_type: string; size_bytes: number; status: string; uploaded_at: string; duplicate_of: string | null }
+interface Proof { id: string; mime_type: string; size_bytes: number; status: string; uploaded_at: string; duplicate_of: string | null }
 interface TicketRow { id: string; ticket_code: string; seq: number; status: string; checked_in_at: string | null }
 interface EventRow { id: number; status: OrderStatus; note: string | null; created_at: string }
 
 function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => void; onChanged: () => void }) {
-  const { role } = useAdmin();
-  const sb = requireSupabase();
-  const { data, loading, error, reload } = useAsync(async () => {
-    const [o, p, t, e] = await Promise.all([
-      sb.from('orders').select('*, ticket_types(name, lot_label)').eq('id', id).single(),
-      sb.from('payment_proofs').select('*').eq('order_id', id).order('uploaded_at', { ascending: false }),
-      sb.from('tickets').select('id, ticket_code, seq, status, checked_in_at').eq('order_id', id).order('seq'),
-      sb.from('order_events').select('*').eq('order_id', id).order('created_at'),
-    ]);
-    for (const r of [o, p, t, e]) if (r.error) throw r.error;
-    return { order: o.data as Row, proofs: p.data as Proof[], tickets: t.data as TicketRow[], events: e.data as EventRow[] };
-  }, [id]);
+  const { can } = useAdmin();
+  const { data, loading, error, reload } = useAsync(
+    () => api<{ order: Row; proofs: Proof[]; tickets: TicketRow[]; events: EventRow[] }>(`/admin/orders/${id}`),
+    [id],
+  );
 
   const [mode, setMode] = useState<'approve' | 'reject' | 'cancel' | null>(null);
   const [ref, setRef] = useState('');
   const [amount, setAmount] = useState('');
+  const [method, setMethod] = useState<'transferencia' | 'express'>('transferencia');
   const [note, setNote] = useState('');
   const [checked, setChecked] = useState(false);
   const [reason, setReason] = useState('');
@@ -136,12 +120,11 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
   const [msg, setMsg] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [link, setLink] = useState<string | null>(null);
 
-  const run = async (fn: () => PromiseLike<{ error: unknown; data?: unknown }>, ok: string) => {
+  const run = async (fn: () => Promise<unknown>, ok: string) => {
     setBusy(true);
     setMsg(null);
     try {
-      const { error, data } = await fn();
-      if (error) throw error;
+      const data = await fn();
       const already = (data as { already_processed?: boolean } | null)?.already_processed;
       setMsg({ tone: 'ok', text: already ? 'Este pedido já tinha sido processado — nada foi alterado.' : ok });
       setMode(null);
@@ -155,21 +138,16 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
   };
 
   const viewProof = async (p: Proof) => {
-    // Abre a janela já no clique (evita bloqueio de pop-ups) e só depois define o URL assinado
-    const w = window.open('about:blank', '_blank');
-    if (w) w.opener = null;
-    const { data: signed, error } = await sb.storage.from('proofs').createSignedUrl(p.storage_path, 300);
-    if (error || !signed) {
-      w?.close();
-      setMsg({ tone: 'bad', text: errorMessage(error) });
-      return;
-    }
-    if (w) w.location.href = signed.signedUrl;
-    else window.open(signed.signedUrl, '_blank', 'noopener');
+    // O ficheiro é servido pela API apenas a quem tem permissão (sessão + perfil), sem URL público
+    window.open(`${API_BASE}/admin/proofs/${p.id}/file`, '_blank', 'noopener');
     if (data?.order.status === 'comprovativo_enviado') {
-      await sb.rpc('admin_mark_in_review', { p_order_id: id });
-      await reload();
-      onChanged();
+      try {
+        await api(`/admin/orders/${id}/review`, { method: 'POST' });
+        await reload();
+        onChanged();
+      } catch (e) {
+        setMsg({ tone: 'bad', text: errorMessage(e) });
+      }
     }
   };
 
@@ -197,7 +175,7 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
                 ['Quantidade / convidados', `${o.quantity} / ${o.guests_total}`],
                 ['Total', formatKz(o.total_kz)],
                 ['Consentimento', `${formatDateTime(o.consent_at)} (${o.consent_version})`],
-                ['Referência bancária', o.payment_reference ?? '—'],
+                ['Referência bancária', o.payment_reference ? `${o.payment_reference} (${o.payment_method === 'express' ? 'Express' : 'Transferência'}${o.payment_status === 'estornado' ? ', estornado' : ''})` : '—'],
                 ['Valor confirmado', o.amount_confirmed_kz ? formatKz(o.amount_confirmed_kz) : '—'],
                 ['Revisto em', o.reviewed_at ? formatDateTime(o.reviewed_at) : '—'],
               ].map(([k, v]) => (
@@ -260,7 +238,7 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
                 onSubmit={(e) => {
                   e.preventDefault();
                   void run(
-                    () => sb.rpc('admin_approve_order', { p_order_id: id, p_payment_reference: ref, p_amount_confirmed: Number(amount.replace(/\s/g, '').replace(',', '.')), p_note: note || null }),
+                    () => api(`/admin/orders/${id}/approve`, { json: { payment_reference: ref, amount_confirmed: Number(amount.replace(/\s/g, '').replace(',', '.')), method, note: note || null } }),
                     'Pagamento aprovado e ingressos emitidos.',
                   );
                 }}
@@ -269,6 +247,13 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div><Label htmlFor="ref">Referência/ID da transacção no banco *</Label><input id="ref" className="admin-input" value={ref} onChange={(e) => setRef(e.target.value)} required minLength={4} /></div>
                   <div><Label htmlFor="amt">Valor confirmado no extracto (Kz) *</Label><input id="amt" className="admin-input" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} required /></div>
+                  <div>
+                    <Label htmlFor="met">Método</Label>
+                    <select id="met" className="admin-input" value={method} onChange={(e) => setMethod(e.target.value as 'transferencia' | 'express')}>
+                      <option value="transferencia">Transferência bancária</option>
+                      <option value="express">Transferência Express</option>
+                    </select>
+                  </div>
                 </div>
                 <div><Label htmlFor="note">Nota interna</Label><input id="note" className="admin-input" value={note} onChange={(e) => setNote(e.target.value)} /></div>
                 <label className="flex items-start gap-2 text-xs text-cream/75">
@@ -287,8 +272,8 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
                 onSubmit={(e) => {
                   e.preventDefault();
                   void (mode === 'reject'
-                    ? run(() => sb.rpc('admin_reject_order', { p_order_id: id, p_reason: reason }), 'Pagamento rejeitado. O cliente pode enviar novo comprovativo.')
-                    : run(() => sb.rpc('admin_cancel_order', { p_order_id: id, p_reason: reason }), 'Pedido cancelado e lugares libertados.'));
+                    ? run(() => api(`/admin/orders/${id}/reject`, { json: { reason } }), 'Pagamento rejeitado. O cliente pode enviar novo comprovativo.')
+                    : run(() => api(`/admin/orders/${id}/cancel`, { json: { reason } }), 'Pedido cancelado e lugares libertados.'));
                 }}
               >
                 <Label htmlFor="reason">{mode === 'reject' ? 'Motivo da rejeição (visível para o cliente) *' : 'Motivo do cancelamento *'}</Label>
@@ -309,10 +294,10 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
 
             {!mode && (
               <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
-                {reviewable && <Button variant="success" size="sm" onClick={() => setMode('approve')}>Aprovar pagamento</Button>}
-                {reviewable && <Button variant="danger" size="sm" onClick={() => setMode('reject')}>Rejeitar</Button>}
+                {reviewable && can('payments.review') && <Button variant="success" size="sm" onClick={() => setMode('approve')}>Aprovar pagamento</Button>}
+                {reviewable && can('payments.review') && <Button variant="danger" size="sm" onClick={() => setMode('reject')}>Rejeitar</Button>}
                 {o.status === 'emitido' && (
-                  <Button size="sm" variant="subtle" loading={busy} onClick={() => run(() => sb.rpc('admin_resend_tickets', { p_order_id: id }), 'Reenvio dos ingressos colocado na fila de email.')}>
+                  <Button size="sm" variant="subtle" loading={busy} onClick={() => run(() => api(`/admin/orders/${id}/resend`, { method: 'POST' }), 'Reenvio dos ingressos colocado na fila de email.')}>
                     Reenviar ingressos por email
                   </Button>
                 )}
@@ -320,14 +305,17 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
                   size="sm"
                   variant="subtle"
                   onClick={async () => {
-                    const { data: r, error } = await sb.rpc('admin_issue_access_link', { p_order_id: id });
-                    if (error) setMsg({ tone: 'bad', text: errorMessage(error) });
-                    else setLink(orderUrl((r as { order_code: string }).order_code, (r as { access_token: string }).access_token));
+                    try {
+                      const r = await api<{ order_code: string; access_token: string }>(`/admin/orders/${id}/access-link`, { method: 'POST' });
+                      setLink(orderUrl(r.order_code, r.access_token));
+                    } catch (e) {
+                      setMsg({ tone: 'bad', text: errorMessage(e) });
+                    }
                   }}
                 >
                   <Link2 className="h-4 w-4" /> Gerar ligação para o cliente
                 </Button>
-                {role === 'admin' && o.status !== 'cancelado' && (
+                {can('orders.cancel') && o.status !== 'cancelado' && (
                   <Button size="sm" variant="ghost" className="text-rose-200" onClick={() => setMode('cancel')}>Cancelar pedido</Button>
                 )}
               </div>

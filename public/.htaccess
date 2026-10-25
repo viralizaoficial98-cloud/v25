@@ -1,12 +1,20 @@
-# V25 — O Legado · Apache (cPanel)
-# Fallback de rotas da SPA: qualquer caminho que não seja ficheiro/pasta real vai para index.html.
-# Se instalar numa subpasta (ex.: /v25/), altere RewriteBase e o build com VITE_BASE_PATH=/v25/.
+# V25 — O Legado · Apache (cPanel) — colocar em public_html/.htaccess
+# Se instalar numa subpasta (ex.: /v25/), altere RewriteBase e faça o build com VITE_BASE_PATH=/v25/.
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
-  # Forçar HTTPS — descomente APENAS depois de confirmar que o certificado SSL está activo.
+  # Forçar HTTPS — descomente APENAS depois de confirmar que o certificado SSL está activo
+  # (cPanel → SSL/TLS Status → Run AutoSSL).
   # RewriteCond %{HTTPS} !=on
   # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # A API e os ficheiros carregados têm regras próprias (api/.htaccess, uploads/.htaccess)
+  RewriteRule ^(api|uploads)(/|$) - [L]
+  # Bloqueia ficheiros sensíveis que alguém possa colocar por engano na pasta pública
+  RewriteRule (^|/)\.(env|git|htpasswd) - [F,L]
+  RewriteRule \.(sql|log|lock|bak|ini)$ - [F,L]
+
+  # Fallback de rotas da SPA (/pedido/..., /admin, /checkout...) para index.html
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
@@ -14,14 +22,21 @@
 </IfModule>
 
 <IfModule mod_headers.c>
-  Header always set X-Content-Type-Options "nosniff"
-  Header always set Referrer-Policy "strict-origin-when-cross-origin"
-  Header always set X-Frame-Options "SAMEORIGIN"
-  Header always set Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+  # Cabeçalhos das páginas do site. A API (/api/) define os seus próprios cabeçalhos de segurança.
+  <If "%{REQUEST_URI} !~ m#/api/#">
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+    # Content Security Policy (mesma usada nos testes ponta-a-ponta — backend/tests/router.php)
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://i.ytimg.com; media-src 'self' blob:; frame-src https://www.youtube-nocookie.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+  </If>
+  # HSTS — activar só depois de o HTTPS estar a funcionar em todo o domínio
+  # Header always set Strict-Transport-Security "max-age=31536000"
   <FilesMatch "\.(js|css|woff2|avif|webp|jpg|png|svg)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
-  <FilesMatch "index\.html$">
+  <FilesMatch "(index\.html|site\.webmanifest)$">
     Header set Cache-Control "no-cache"
   </FilesMatch>
 </IfModule>
@@ -33,7 +48,7 @@
 </IfModule>
 
 <IfModule mod_deflate.c>
-  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+  AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json image/svg+xml
 </IfModule>
 
 Options -Indexes

@@ -87,13 +87,3 @@ export async function validateProofFile(file: File): Promise<{ ok: true; mime: (
   if (!mime) return { ok: false, error: 'Formato não aceite. Envie PDF, JPG ou PNG.' };
   return { ok: true, mime };
 }
-
-export async function sha256Hex(file: Blob): Promise<string | null> {
-  try {
-    const buf = await readBytes(file);
-    const hash = await crypto.subtle.digest('SHA-256', buf);
-    return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
-  } catch {
-    return null; // WebCrypto indisponível (ex.: HTTP sem TLS) — o hash é opcional
-  }
-}

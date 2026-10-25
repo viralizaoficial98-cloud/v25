@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { uploadProof } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 import { formatBytes } from '@/lib/format';
-import { sha256Hex, validateProofFile } from '@/lib/validation';
+import { validateProofFile } from '@/lib/validation';
 import { cn } from '@/lib/cn';
 
 export function ProofUpload({ code, token, onUploaded }: { code: string; token: string; onUploaded: () => void }) {
@@ -37,8 +37,7 @@ export function ProofUpload({ code, token, onUploaded }: { code: string; token: 
         setError(v.error);
         return;
       }
-      const hash = await sha256Hex(file);
-      await uploadProof(code, token, file, v.mime, hash);
+      await uploadProof(code, token, file);
       setFile(null);
       onUploaded();
     } catch (e) {

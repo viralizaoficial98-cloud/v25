@@ -8,7 +8,6 @@ import { requestOrderAccess } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 import { formatDateTime } from '@/lib/format';
 import { forgetOrderAccess, orderPath, savedOrders } from '@/lib/orderAccess';
-import { isBackendConfigured } from '@/lib/supabase';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 export default function Lookup() {
@@ -76,9 +75,7 @@ export default function Lookup() {
       <section className="mt-12 rounded-[1.75rem] border border-gold/20 bg-ink-800/60 p-6 md:p-8" aria-labelledby="recuperar">
         <h2 id="recuperar" className="flex items-center gap-2 text-2xl font-semibold"><Mail className="h-5 w-5 text-gold" /> Recuperar acesso por email</h2>
         <p className="mt-2 text-sm text-cream/60">Indique o email usado na inscrição. Se existirem pedidos associados, enviaremos novas ligações seguras para esse endereço.</p>
-        {!isBackendConfigured ? (
-          <Alert tone="warn" className="mt-5">Funcionalidade indisponível: integração com o servidor pendente.</Alert>
-        ) : sent ? (
+        {sent ? (
           <Alert tone="ok" className="mt-5" title="Pedido recebido">
             Se o email tiver pedidos associados, receberá as ligações em breve. Verifique também a pasta de spam. Se não receber nada, contacte a organização.
           </Alert>

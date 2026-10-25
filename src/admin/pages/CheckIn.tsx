@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Camera, CameraOff, CheckCircle2, Keyboard, ShieldAlert, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/misc';
-import { requireSupabase } from '@/lib/supabase';
+import { api } from '@/lib/http';
 import { errorMessage } from '@/lib/errors';
 import { formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/cn';
@@ -18,7 +18,6 @@ const RESULT_UI: Record<CheckinResult['result'], { title: string; cls: string; i
 };
 
 export default function CheckIn() {
-  const sb = requireSupabase();
   const video = useRef<HTMLVideoElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -39,9 +38,7 @@ export default function CheckIn() {
       busyRef.current = true;
       setError(null);
       try {
-        const { data, error } = await sb.rpc('checkin_ticket', { p_input: input.trim(), p_commit: !verifyOnly });
-        if (error) throw error;
-        const r = data as CheckinResult;
+        const r = await api<CheckinResult>('/admin/checkin', { json: { input: input.trim(), commit: !verifyOnly } });
         setResult(r);
         setHistory((h) => [{ ...r, at: new Date().toISOString() }, ...h].slice(0, 15));
         navigator.vibrate?.(r.result === 'ok' || r.result === 'valido' ? 80 : [60, 60, 60]);
@@ -51,7 +48,7 @@ export default function CheckIn() {
         busyRef.current = false;
       }
     },
-    [sb, verifyOnly],
+    [verifyOnly],
   );
 
   const stop = useCallback(() => {

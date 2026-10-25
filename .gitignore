@@ -5,8 +5,6 @@ dist
 .env.*.local
 *.log
 .DS_Store
-supabase/.temp
-supabase/.branches
 .pgtest
 # Backend PHP
 backend/app/vendor/
@@ -17,3 +15,5 @@ backend/app/storage/sessions/*
 backend/app/storage/tmp/*
 !backend/app/storage/**/.gitkeep
 deploy/
+e2e-screenshots
+backend/public/uploads/media/

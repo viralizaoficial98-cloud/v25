@@ -4,7 +4,7 @@ import { CrudPage } from '../Crud';
 export default function TimelineAdmin() {
   return (
     <CrudPage
-      table="timeline_entries"
+      type="timeline"
       title="Linha do tempo — 25 anos"
       description="Adicione apenas marcos confirmados pelo grupo (datas, actuações, gravações…). Nada é publicado automaticamente."
       empty="Ainda não há marcos. O site mostra “A história está a ser reunida”."

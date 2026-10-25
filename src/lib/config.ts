@@ -2,7 +2,7 @@ import type { EventSettings } from './types';
 
 /**
  * Identidade oficial do evento. Usada como valor inicial enquanto a configuração
- * é carregada do Supabase (e quando o backend ainda não está configurado).
+ * é carregada da API (e se a API estiver temporariamente indisponível).
  * Dados de pagamento NÃO são mostrados a partir daqui: aparecem apenas dentro de
  * um pedido real, vindos da base de dados.
  */

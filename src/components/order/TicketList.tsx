@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Download, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/misc';
-import { downloadTicketsPdf, qrDataUrl } from '@/lib/ticketPdf';
+import { qrDataUrl } from '@/lib/ticketPdf';
+import { downloadTicketsPdf } from '@/lib/api';
+import { errorMessage } from '@/lib/errors';
 import { formatDateTime, formatEventDate, formatEventTime } from '@/lib/format';
 import type { CustomerOrder, EventSettings, OrderTicket } from '@/lib/types';
 
@@ -52,8 +54,9 @@ function TicketCard({ t, order, settings }: { t: OrderTicket; order: CustomerOrd
   );
 }
 
-export function TicketList({ order, settings }: { order: CustomerOrder; settings: EventSettings }) {
+export function TicketList({ order, settings, token }: { order: CustomerOrder; settings: EventSettings; token: string }) {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -62,8 +65,11 @@ export function TicketList({ order, settings }: { order: CustomerOrder; settings
           loading={busy}
           onClick={async () => {
             setBusy(true);
+            setError(null);
             try {
-              await downloadTicketsPdf(order, settings);
+              await downloadTicketsPdf(order.order_code, token);
+            } catch (e) {
+              setError(errorMessage(e));
             } finally {
               setBusy(false);
             }
@@ -72,6 +78,7 @@ export function TicketList({ order, settings }: { order: CustomerOrder; settings
           <Download className="h-4 w-4" aria-hidden /> Descarregar PDF
         </Button>
       </div>
+      {error && <p role="alert" className="mb-4 text-sm text-rose-300">{error}</p>}
       <ul className="space-y-5">
         {order.tickets.map((t) => (
           <TicketCard key={t.ticket_code} t={t} order={order} settings={settings} />

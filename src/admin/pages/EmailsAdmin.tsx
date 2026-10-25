@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { BellRing, PlayCircle, RefreshCw, RotateCcw, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, Badge } from '@/components/ui/misc';
-import { requireSupabase } from '@/lib/supabase';
+import { api } from '@/lib/http';
 import { errorMessage } from '@/lib/errors';
 import { formatDateTime } from '@/lib/format';
 import { useAsync } from '@/hooks/useAsync';
@@ -19,26 +19,19 @@ const TEMPLATE_LABEL: Record<string, string> = {
   ingresso_disponivel: 'Ingresso digital disponível',
   lembrete_evento: 'Lembrete do evento',
   acesso_pedido: 'Recuperação de acesso',
+  recuperar_senha: 'Redefinição de palavra-passe (equipa)',
+  convite_equipa: 'Convite para a equipa',
   pedido_cancelado: 'Pedido cancelado',
   teste_smtp: 'Teste SMTP',
 };
 
 export default function EmailsAdmin() {
-  const sb = requireSupabase();
   const [msg, setMsg] = useState<{ tone: 'ok' | 'bad' | 'warn'; text: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [testTo, setTestTo] = useState('');
 
-  const status = useAsync(async () => {
-    const { data, error } = await sb.functions.invoke('send-emails', { body: { action: 'status' } });
-    if (error) return null; // função ainda não publicada
-    return data as SmtpStatus;
-  }, []);
-  const outbox = useAsync(async () => {
-    const { data, error } = await sb.from('email_outbox').select('id, template, to_email, status, attempts, last_error, created_at, sent_at').order('id', { ascending: false }).limit(100);
-    if (error) throw error;
-    return data as Outbox[];
-  }, []);
+  const status = useAsync(() => api<SmtpStatus>('/admin/emails/status'), []);
+  const outbox = useAsync(() => api<Outbox[]>('/admin/emails'), []);
 
   const act = async (name: string, fn: () => Promise<string>) => {
     setBusy(name);
@@ -55,9 +48,7 @@ export default function EmailsAdmin() {
 
   const process = () =>
     act('process', async () => {
-      const { data, error } = await sb.functions.invoke('send-emails', { body: { action: 'process' } });
-      if (error) throw new Error('A função "send-emails" não respondeu. Verifique se foi publicada (docs/DEPLOY.md).');
-      const r = data as { sent: number; failed: number; skipped?: string };
+      const r = await api<{ sent: number; failed: number; skipped?: string }>('/admin/emails/process', { method: 'POST' });
       if (r.skipped) return r.skipped;
       return `Processados: ${r.sent} enviados, ${r.failed} com falha.`;
     });
@@ -66,7 +57,7 @@ export default function EmailsAdmin() {
 
   return (
     <div>
-      <PageHeader title="Emails e SMTP" description="As mensagens ficam numa fila e são enviadas pela Edge Function “send-emails” através do servidor SMTP configurado." />
+      <PageHeader title="Emails e SMTP" description="As mensagens ficam numa fila e são enviadas pelo servidor (cron do cPanel ou botão abaixo) através do SMTP configurado no ficheiro .env privado." />
       {msg && <Alert tone={msg.tone} className="mb-4">{msg.text}</Alert>}
 
       <div className="mb-4 grid gap-4 lg:grid-cols-2">
@@ -74,9 +65,7 @@ export default function EmailsAdmin() {
           {status.loading ? (
             <p className="text-sm text-cream/50">A verificar…</p>
           ) : !status.data ? (
-            <Alert tone="warn" title="Integração pendente">
-              A Edge Function <code>send-emails</code> ainda não está publicada neste projecto Supabase. Os emails ficam em fila (estado “pendente”) e <strong>não são enviados</strong> até a função e as credenciais SMTP estarem configuradas.
-            </Alert>
+            <Alert tone="bad">Não foi possível obter o estado do SMTP.</Alert>
           ) : status.data.configured ? (
             <div className="space-y-1 text-sm">
               <Badge tone="ok">Configurado</Badge>
@@ -85,7 +74,7 @@ export default function EmailsAdmin() {
             </div>
           ) : (
             <Alert tone="warn" title="SMTP por configurar">
-              Faltam os segredos: {status.data.missing.join(', ')}. Defina-os com <code>supabase secrets set</code> (ver docs/DEPLOY.md). As credenciais nunca ficam no site nem na base de dados.
+              Faltam as variáveis: {status.data.missing.join(', ')}. Defina-as no ficheiro <code>.env</code> privado da API (fora de public_html — ver docs/INSTALACAO_CPANEL.md). Até lá os emails ficam na fila com estado “pendente” e <strong>não são enviados</strong>.
             </Alert>
           )}
         </Panel>
@@ -100,9 +89,8 @@ export default function EmailsAdmin() {
                 onClick={() =>
                   confirm('Colocar na fila um lembrete para todos os pedidos com ingresso emitido? (Cada pessoa recebe no máximo um lembrete.)') &&
                   act('remind', async () => {
-                    const { data, error } = await sb.rpc('admin_queue_event_reminders');
-                    if (error) throw error;
-                    return `${data} lembrete(s) colocados na fila.`;
+                    const r = await api<{ queued: number }>('/admin/emails/reminders', { method: 'POST' });
+                    return `${r.queued} lembrete(s) colocados na fila.`;
                   })
                 }
               >
@@ -114,8 +102,7 @@ export default function EmailsAdmin() {
               onSubmit={(e: FormEvent) => {
                 e.preventDefault();
                 void act('test', async () => {
-                  const { error } = await sb.rpc('admin_queue_test_email', { p_to: testTo });
-                  if (error) throw error;
+                  await api('/admin/emails/test', { json: { to: testTo } });
                   return 'Email de teste colocado na fila. Clique em “Processar fila agora”.';
                 });
               }}
@@ -145,8 +132,7 @@ export default function EmailsAdmin() {
                 <Td>
                   {o.status === 'falhou' && (
                     <Button size="icon" variant="ghost" aria-label="Tentar de novo" onClick={() => act('retry', async () => {
-                      const { error } = await sb.rpc('admin_retry_email', { p_id: o.id });
-                      if (error) throw error;
+                      await api(`/admin/emails/${o.id}/retry`, { method: 'POST' });
                       return 'Email recolocado na fila.';
                     })}><RotateCcw className="h-4 w-4" /></Button>
                   )}

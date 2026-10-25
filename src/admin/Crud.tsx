@@ -3,23 +3,23 @@ import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, Badge } from '@/components/ui/misc';
 import { Dialog } from '@/components/ui/dialog';
-import { requireSupabase } from '@/lib/supabase';
 import { mediaUrl } from '@/lib/api';
-import { errorMessage, UserError } from '@/lib/errors';
+import { errorMessage } from '@/lib/errors';
+import { api } from '@/lib/http';
 import { useAsync } from '@/hooks/useAsync';
 import { Label, Loadable, PageHeader, Panel, Toggle } from './ui';
-import { removeMedia, uploadMedia } from './upload';
+import { uploadImage } from './upload';
 
 export type FieldDef =
   | { key: string; label: string; type: 'text' | 'textarea'; required?: boolean; placeholder?: string; hint?: string }
   | { key: string; label: string; type: 'bool' }
   | { key: string; label: string; type: 'select'; options: { value: string; label: string }[] }
-  | { key: string; label: string; type: 'image'; folder: string };
+  | { key: string; label: string; type: 'image'; folder: 'historia' | 'integrantes' };
 
 type Row = Record<string, unknown> & { id: string; sort_order: number; published?: boolean };
 
 interface Props {
-  table: 'timeline_entries' | 'members' | 'faqs';
+  type: 'timeline' | 'members' | 'faqs';
   title: string;
   description: ReactNode;
   fields: FieldDef[];
@@ -29,13 +29,9 @@ interface Props {
 }
 
 /** CRUD genérico para conteúdos editáveis (linha do tempo, integrantes, FAQ). */
-export function CrudPage({ table, title, description, fields, empty, defaults, render }: Props) {
-  const sb = requireSupabase();
-  const { data = [], loading, error, reload } = useAsync(async () => {
-    const { data, error } = await sb.from(table).select('*').order('sort_order').order('created_at');
-    if (error) throw error;
-    return data as Row[];
-  }, [table]);
+export function CrudPage({ type, title, description, fields, empty, defaults, render }: Props) {
+  const base = `/admin/content/${type}`;
+  const { data = [], loading, error, reload } = useAsync(() => api<Row[]>(base), [type]);
   const [draft, setDraft] = useState<Record<string, unknown> | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -51,19 +47,11 @@ export function CrudPage({ table, title, description, fields, empty, defaults, r
       for (const f of fields) row[f.key] = draft[f.key] ?? (f.type === 'bool' ? false : f.type === 'image' ? null : '');
       const img = fields.find((f) => f.type === 'image') as Extract<FieldDef, { type: 'image' }> | undefined;
       if (img && file) {
-        const up = await uploadMedia(file, img.folder);
-        if (up.kind !== 'foto') throw new UserError('Escolha uma imagem.');
-        if (draft[img.key]) await removeMedia(draft[img.key] as string);
-        row[img.key] = up.path;
+        // A imagem anterior é apagada pelo servidor quando o conteúdo é guardado
+        row[img.key] = (await uploadImage(file, img.folder)).path;
       }
-      if (draft.id) {
-        const { error } = await sb.from(table).update(row).eq('id', draft.id as string);
-        if (error) throw error;
-      } else {
-        row.sort_order = (data.at(-1)?.sort_order ?? 0) + 10;
-        const { error } = await sb.from(table).insert(row);
-        if (error) throw error;
-      }
+      if (draft.id) await api(`${base}/${draft.id as string}`, { method: 'PUT', json: row });
+      else await api(base, { json: row });
       setDraft(null);
       setFile(null);
       await reload();
@@ -76,10 +64,11 @@ export function CrudPage({ table, title, description, fields, empty, defaults, r
 
   const remove = async (r: Row) => {
     if (!confirm('Eliminar este item?')) return;
-    const img = fields.find((f) => f.type === 'image');
-    const { error } = await sb.from(table).delete().eq('id', r.id);
-    if (error) return setErr(errorMessage(error));
-    if (img) await removeMedia(r[img.key] as string);
+    try {
+      await api(`${base}/${r.id}`, { method: 'DELETE' });
+    } catch (e) {
+      setErr(errorMessage(e));
+    }
     await reload();
   };
 
@@ -87,10 +76,12 @@ export function CrudPage({ table, title, description, fields, empty, defaults, r
     const a = data[i];
     const b = data[i + d];
     if (!a || !b) return;
-    await Promise.all([
-      sb.from(table).update({ sort_order: b.sort_order }).eq('id', a.id),
-      sb.from(table).update({ sort_order: a.sort_order === b.sort_order ? a.sort_order + d : a.sort_order }).eq('id', b.id),
-    ]);
+    try {
+      await api(`${base}/${a.id}`, { method: 'PUT', json: { sort_order: b.sort_order } });
+      await api(`${base}/${b.id}`, { method: 'PUT', json: { sort_order: a.sort_order === b.sort_order ? a.sort_order + d : a.sort_order } });
+    } catch (e) {
+      setErr(errorMessage(e));
+    }
     await reload();
   };
 

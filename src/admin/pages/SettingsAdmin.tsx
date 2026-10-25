@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/misc';
-import { requireSupabase } from '@/lib/supabase';
+import { api } from '@/lib/http';
 import { errorMessage } from '@/lib/errors';
 import { fromLuandaInput, toLuandaInput } from '@/lib/format';
 import type { EventSettings, SocialNetwork } from '@/lib/types';
@@ -84,18 +84,17 @@ export default function SettingsAdmin() {
     setMsg(null);
     try {
       const socials = Object.fromEntries(Object.entries(form.socials ?? {}).filter(([, v]) => v && /^https?:\/\//.test(v)));
-      const { error } = await requireSupabase()
-        .from('event_settings')
-        .update({
+      await api('/admin/settings', {
+        method: 'PUT',
+        json: {
           ...Object.fromEntries(GROUPS.flatMap((g) => g.fields.map((f) => [f.k, (form[f.k] as string) ?? '']))),
           starts_at: fromLuandaInput(startsAt) ?? settings.starts_at,
           sales_closed_message: form.sales_closed_message,
           capacity: form.capacity || null,
           reservation_hours: form.reservation_hours,
           socials,
-        })
-        .eq('id', 1);
-      if (error) throw error;
+        },
+      });
       await reload();
       setMsg({ tone: 'ok', text: 'Configurações guardadas.' });
     } catch (err) {
