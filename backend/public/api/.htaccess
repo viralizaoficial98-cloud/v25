@@ -1,0 +1,11 @@
+# Encaminha todos os pedidos /api/* para index.php
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^ index.php [L,QSA]
+</IfModule>
+# Passa o cabeçalho Authorization em alguns alojamentos (não usado, mas inofensivo)
+SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+Options -Indexes
+# Opcional — caminho da pasta privada, se não for ../../v25_app:
+# SetEnv V25_APP_DIR /home/renewangola/v25_app

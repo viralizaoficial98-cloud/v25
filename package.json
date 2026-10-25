@@ -12,7 +12,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db": "node scripts/test-db.mjs",
-    "images": "node scripts/optimize-images.mjs"
+    "images": "node scripts/optimize-images.mjs",
+    "test:api": "node scripts/test-api.mjs",
+    "build:schema": "node scripts/build-mysql-schema.mjs"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.1",
@@ -44,6 +46,7 @@
     "@vitejs/plugin-react": "^4.3.3",
     "autoprefixer": "^10.4.20",
     "jsdom": "^25.0.1",
+    "mysql2": "^3.24.6",
     "pg": "^8.13.1",
     "postcss": "^8.4.49",
     "sharp": "^0.33.5",

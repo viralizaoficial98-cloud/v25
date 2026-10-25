@@ -8,3 +8,12 @@ dist
 supabase/.temp
 supabase/.branches
 .pgtest
+# Backend PHP
+backend/app/vendor/
+backend/app/.env
+backend/app/storage/proofs/*
+backend/app/storage/logs/*
+backend/app/storage/sessions/*
+backend/app/storage/tmp/*
+!backend/app/storage/**/.gitkeep
+deploy/
