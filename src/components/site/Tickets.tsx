@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Check, Crown, Hourglass, ShieldCheck, Sparkles, Ticket, Users } from 'lucide-react';
 import { Alert, Badge, CmsHeading, EmptyState, Spinner } from '@/components/ui/misc';
 import { buttonVariants, Button } from '@/components/ui/button';
-import { VipRequestDialog } from '@/components/vip/VipRequestDialog';
 import { cn } from '@/lib/cn';
 import { fetchTicketTypes } from '@/lib/api';
 import { formatDateTime, formatKz } from '@/lib/format';
@@ -13,6 +12,9 @@ import { useSettings } from '@/hooks/useSettings';
 import { useSite } from '@/hooks/useSite';
 import { errorMessage } from '@/lib/errors';
 import type { PublicTicketType } from '@/lib/types';
+
+// Formulário VIP (inclui a validação de telefones) carregado só quando é aberto
+const VipRequestDialog = lazy(() => import('@/components/vip/VipRequestDialog').then((m) => ({ default: m.VipRequestDialog })));
 
 function availabilityLabel(t: PublicTicketType) {
   if (t.sale_mode === 'consulta') return 'Disponibilidade limitada · sujeito a aprovação';
@@ -160,7 +162,11 @@ export function Tickets() {
           </>
         )}
       </div>
-      <VipRequestDialog open={vipOpen} onOpenChange={setVipOpen} />
+      {vipOpen && (
+        <Suspense fallback={null}>
+          <VipRequestDialog open={vipOpen} onOpenChange={setVipOpen} />
+        </Suspense>
+      )}
     </section>
   );
 }

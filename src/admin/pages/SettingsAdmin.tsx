@@ -7,7 +7,8 @@ import { errorMessage } from '@/lib/errors';
 import { fromLuandaInput, toLuandaInput } from '@/lib/format';
 import type { EventSettings, SocialNetwork } from '@/lib/types';
 import { useSettings } from '@/hooks/useSettings';
-import { Label, PageHeader, Panel } from '../ui';
+import { useAsync } from '@/hooks/useAsync';
+import { Label, Loadable, PageHeader, Panel } from '../ui';
 
 const SOCIALS: SocialNetwork[] = ['instagram', 'facebook', 'youtube', 'tiktok', 'spotify', 'whatsapp'];
 
@@ -67,19 +68,36 @@ const GROUPS: { title: string; fields: ReturnType<typeof TEXT>[] }[] = [
 ];
 
 export default function SettingsAdmin() {
-  const { settings, reload } = useSettings();
-  const [form, setForm] = useState<EventSettings>(settings);
-  const [startsAt, setStartsAt] = useState(toLuandaInput(settings.starts_at));
+  const { reload: reloadPublic } = useSettings();
+  // Configuração completa (inclui dados bancários, que já não são públicos)
+  const full = useAsync(() => api<EventSettings>('/admin/settings'), []);
+  const settings = full.data;
+  const [form, setForm] = useState<EventSettings | null>(null);
+  const [startsAt, setStartsAt] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
 
   useEffect(() => {
+    if (!settings) return;
     setForm(settings);
     setStartsAt(toLuandaInput(settings.starts_at));
   }, [settings]);
+  const reload = async () => {
+    await Promise.all([full.reload(), reloadPublic()]);
+  };
+
+  if (!form || !settings) {
+    return (
+      <div>
+        <PageHeader title="Evento e conteúdos" />
+        <Loadable loading={full.loading} error={full.error}>{null}</Loadable>
+      </div>
+    );
+  }
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
+    if (!form) return;
     setBusy(true);
     setMsg(null);
     try {

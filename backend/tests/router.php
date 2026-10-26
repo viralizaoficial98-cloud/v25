@@ -25,7 +25,7 @@ if (str_starts_with($uri, '/uploads/media/')) {
     return true;
 }
 // Mesma Content-Security-Policy do public/.htaccess (validada nos testes E2E)
-$csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://i.ytimg.com; media-src 'self' blob:; frame-src https://www.youtube-nocookie.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'";
+$csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://i.ytimg.com; media-src 'self' blob:; frame-src https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'";
 $docroot = getenv('V25_DOCROOT') ?: __DIR__ . '/../../dist';
 $file = realpath($docroot . $uri);
 if ($file && is_file($file) && str_starts_with($file, realpath($docroot))) {

@@ -143,7 +143,9 @@ final class GalleryService
     public static function updateAlbum(string $id, array $in): array
     {
         $cur = Db::one('SELECT * FROM gallery_albums WHERE id = :id', ['id' => $id]) ?? throw new ApiError('NAO_ENCONTRADO', 404);
-        $row = self::cleanAlbum($in + ['title' => $cur['title']]);
+        // Actualização parcial: campos não enviados mantêm o valor actual
+        $keep = array_intersect_key($cur, array_flip(['title', 'category', 'event_date', 'location', 'description', 'published', 'sort_order']));
+        $row = self::cleanAlbum($in + $keep);
         if ($row['title'] !== $cur['title']) {
             $row['slug'] = self::slug($row['title'], $id);
         }

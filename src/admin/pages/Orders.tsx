@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, ChevronLeft, ChevronRight, Eye, Link2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, CopyButton, StatusBadge } from '@/components/ui/misc';
@@ -14,21 +15,23 @@ import { Label, Loadable, PageHeader, Panel, Table, Td } from '../ui';
 import { useAdmin } from '../session';
 
 const PAGE = 25;
-type Row = OrderRow & { ticket_types: { name: string; lot_label: string } | null; payment_method?: string | null; payment_status?: string | null };
+type Row = OrderRow & { ticket_types: { name: string; lot_label: string } | null; payment_method?: string | null; payment_status?: string | null; source?: 'checkout' | 'vip' };
 
 export default function Orders({ preset }: { preset?: 'review' }) {
   const [status, setStatus] = useState<string>(preset === 'review' ? 'review' : 'all');
-  const [q, setQ] = useState('');
-  const [query, setQuery] = useState('');
+  const [params] = useSearchParams();
+  const [q, setQ] = useState(params.get('q') ?? '');
+  const [query, setQuery] = useState(params.get('q') ?? '');
+  const [source, setSource] = useState('');
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => setStatus(preset === 'review' ? 'review' : 'all'), [preset]);
 
   const { data, loading, error, reload } = useAsync(() => {
-    const qs = new URLSearchParams({ status, q: query.trim(), page: String(page), page_size: String(PAGE) });
+    const qs = new URLSearchParams({ status, q: query.trim(), page: String(page), page_size: String(PAGE), ...(source ? { source } : {}) });
     return api<{ rows: Row[]; count: number }>(`/admin/orders?${qs}`);
-  }, [status, query, page]);
+  }, [status, query, page, source]);
 
   const pages = Math.max(1, Math.ceil((data?.count ?? 0) / PAGE));
 
@@ -58,6 +61,11 @@ export default function Orders({ preset }: { preset?: 'review' }) {
               <option key={s} value={s}>{ORDER_STATUS[s].label}</option>
             ))}
           </select>
+          <select className="admin-input sm:w-40" value={source} onChange={(e) => { setSource(e.target.value); setPage(0); }} aria-label="Filtrar por origem">
+            <option value="">Todas as origens</option>
+            <option value="checkout">Checkout</option>
+            <option value="vip">Proposta VIP</option>
+          </select>
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-fg/40" />
             <input className="admin-input pl-9" placeholder="Pesquisar…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Pesquisar pedidos" />
@@ -74,7 +82,11 @@ export default function Orders({ preset }: { preset?: 'review' }) {
                   {o.full_name}
                   <span className="block text-xs text-fg/45">{o.email}</span>
                 </Td>
-                <Td>{o.quantity} × {o.ticket_types?.name}</Td>
+                <Td>
+                  {o.quantity} × {o.ticket_types?.name}
+                  {o.source === 'vip' && <span className="ml-1 rounded-full bg-gold-pale px-2 py-0.5 text-[10px] font-bold text-gold-deep">VIP</span>}
+                  {o.payment_method && <span className="block text-xs text-fg/45">{o.payment_method === 'express' ? 'Express' : 'Transferência'}</span>}
+                </Td>
                 <Td>{formatKz(o.total_kz)}</Td>
                 <Td><StatusBadge status={o.status} /></Td>
                 <Td className="whitespace-nowrap text-xs text-fg/60">{formatDateTime(o.created_at)}</Td>
@@ -113,6 +125,11 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
   const [ref, setRef] = useState('');
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<'transferencia' | 'express'>('transferencia');
+  // Por omissão, o método que o cliente indicou no checkout
+  useEffect(() => {
+    const m = data?.order.payment_method;
+    if (m === 'express' || m === 'transferencia') setMethod(m);
+  }, [data?.order.payment_method]);
   const [note, setNote] = useState('');
   const [checked, setChecked] = useState(false);
   const [reason, setReason] = useState('');

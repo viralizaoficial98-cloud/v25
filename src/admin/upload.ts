@@ -1,6 +1,6 @@
 import { api } from '@/lib/http';
 import { UserError } from '@/lib/errors';
-import type { MediaItem } from '@/lib/types';
+import type { GalleryItem, MediaItem } from '@/lib/types';
 
 /**
  * Reduz fotografias grandes no navegador antes do envio (apenas redimensiona, sem recortes).
@@ -43,7 +43,7 @@ export async function uploadMediaItem(file: File, section: MediaItem['section'],
 }
 
 /** Imagem para linha do tempo / integrantes: devolve o caminho a guardar no conteúdo. */
-export async function uploadImage(file: File, folder: 'historia' | 'integrantes'): Promise<{ path: string; width: number; height: number }> {
+export async function uploadImage(file: File, folder: 'historia' | 'integrantes' | 'site'): Promise<{ path: string; width: number; height: number }> {
   checkFile(file, false);
   const form = new FormData();
   form.append('file', await shrinkImage(file));
@@ -56,4 +56,22 @@ export function youtubeId(input: string): string | null {
   if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
   const m = /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/.exec(s);
   return m ? m[1] : null;
+}
+
+/** Galeria dos eventos: envia uma fotografia (reduzida no navegador) ou um vídeo MP4/WebM para o álbum. */
+export async function uploadGalleryFile(albumId: string, file: File, caption = '', altText = ''): Promise<GalleryItem> {
+  checkFile(file, true);
+  if (file.type.startsWith('image/') && file.size > 15 * 1024 * 1024) throw new UserError('Fotografia excede 15 MB.');
+  const form = new FormData();
+  form.append('file', file.type.startsWith('image/') ? await shrinkImage(file) : file);
+  form.append('caption', caption);
+  form.append('alt_text', altText);
+  return api<GalleryItem>(`/admin/gallery/albums/${albumId}/items`, { form });
+}
+
+export async function replaceGalleryFile(itemId: string, file: File): Promise<GalleryItem> {
+  checkFile(file, true);
+  const form = new FormData();
+  form.append('file', file.type.startsWith('image/') ? await shrinkImage(file) : file);
+  return api<GalleryItem>(`/admin/gallery/items/${itemId}/replace`, { form });
 }

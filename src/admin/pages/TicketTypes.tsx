@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { History, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, Badge } from '@/components/ui/misc';
 import { Dialog } from '@/components/ui/dialog';
@@ -25,12 +25,17 @@ type Draft = {
   sales_end: string;
   published: boolean;
   sort_order: string;
+  sale_mode: 'directo' | 'consulta';
+  benefits: string;
+  badge: string;
 };
 
 const EMPTY: Draft = {
   name: '', lot_label: '', description: '', price_kz: '', quantity_total: '', max_per_order: '4', max_per_customer: '10',
-  persons_per_ticket: '1', sales_start: '', sales_end: '', published: false, sort_order: '0',
+  persons_per_ticket: '1', sales_start: '', sales_end: '', published: false, sort_order: '0', sale_mode: 'directo', benefits: '', badge: '',
 };
+
+interface PriceChange { old_price_kz: number | null; new_price_kz: number | null; changed_by: string | null; changed_at: string }
 
 export default function TicketTypes() {
   const { settings, reload: reloadSettings } = useSettings();
@@ -39,6 +44,8 @@ export default function TicketTypes() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [historyOf, setHistoryOf] = useState<TicketTypeRow | null>(null);
+  const history = useAsync(() => (historyOf ? api<PriceChange[]>(`/admin/ticket-types/${historyOf.id}/price-history`) : Promise.resolve([])), [historyOf?.id]);
 
   const edit = (t?: TicketTypeRow) =>
     setDraft(
@@ -47,7 +54,8 @@ export default function TicketTypes() {
             id: t.id, name: t.name, lot_label: t.lot_label, description: t.description, price_kz: t.price_kz?.toString() ?? '',
             quantity_total: String(t.quantity_total), max_per_order: String(t.max_per_order), max_per_customer: String(t.max_per_customer),
             persons_per_ticket: String(t.persons_per_ticket), sales_start: toLuandaInput(t.sales_start), sales_end: toLuandaInput(t.sales_end),
-            published: t.published, sort_order: String(t.sort_order),
+            published: t.published, sort_order: String(t.sort_order), sale_mode: t.sale_mode ?? 'directo',
+            benefits: (t.benefits ?? []).join('\n'), badge: t.badge ?? '',
           }
         : EMPTY,
     );
@@ -56,8 +64,9 @@ export default function TicketTypes() {
     e.preventDefault();
     if (!draft) return;
     setFormError(null);
-    const price = draft.price_kz.trim() ? Number(draft.price_kz.replace(/\s/g, '').replace(',', '.')) : null;
-    if (draft.published && (price === null || !(price > 0))) {
+    const consulta = draft.sale_mode === 'consulta';
+    const price = !consulta && draft.price_kz.trim() ? Number(draft.price_kz.replace(/\s/g, '').replace(',', '.')) : null;
+    if (draft.published && !consulta && (price === null || !(price > 0))) {
       setFormError('Para publicar, defina um preço válido em Kz.');
       return;
     }
@@ -74,6 +83,9 @@ export default function TicketTypes() {
       sales_end: fromLuandaInput(draft.sales_end),
       published: draft.published,
       sort_order: Number(draft.sort_order) || 0,
+      sale_mode: draft.sale_mode,
+      benefits: draft.benefits.split('\n').map((b) => b.trim()).filter(Boolean),
+      badge: draft.badge.trim(),
     };
     setBusy(true);
     try {
@@ -135,13 +147,17 @@ export default function TicketTypes() {
             {data.map((t) => (
               <tr key={t.id}>
                 <Td className="font-semibold">{t.name}{t.lot_label && <span className="block text-xs font-normal text-gold">{t.lot_label}</span>}</Td>
-                <Td>{formatKz(t.price_kz)}</Td>
+                <Td>
+                  {t.sale_mode === 'consulta' ? <Badge tone="warn">Por consulta</Badge> : formatKz(t.price_kz)}
+                  {t.badge && <span className="block text-xs text-gold-deep">{t.badge}</span>}
+                </Td>
                 <Td>{t.quantity_total} / {t.quantity_reserved} / {t.quantity_sold}<span className="block text-xs text-fg/50">Disponíveis: {t.quantity_total - t.quantity_reserved - t.quantity_sold}</span></Td>
                 <Td className="text-xs">{t.max_per_order}/pedido · {t.max_per_customer}/cliente{t.persons_per_ticket > 1 && <span className="block">{t.persons_per_ticket} pessoas/ingresso</span>}</Td>
                 <Td className="text-xs">{t.sales_start ? formatDateTime(t.sales_start) : 'Imediato'} → {t.sales_end ? formatDateTime(t.sales_end) : 'sem fim'}</Td>
                 <Td>{t.published ? <Badge tone="ok">Publicado</Badge> : <Badge>Rascunho</Badge>}</Td>
                 <Td className="whitespace-nowrap">
                   <Button size="icon" variant="ghost" aria-label={`Editar ${t.name}`} onClick={() => edit(t)}><Pencil className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" aria-label={`Histórico de preços de ${t.name}`} onClick={() => setHistoryOf(t)}><History className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" aria-label={`Eliminar ${t.name}`} onClick={() => remove(t)}><Trash2 className="h-4 w-4" /></Button>
                 </Td>
               </tr>
@@ -150,13 +166,39 @@ export default function TicketTypes() {
         </Loadable>
       </Panel>
 
+      <Dialog open={!!historyOf} onOpenChange={(v) => !v && setHistoryOf(null)} title={`Histórico de preços · ${historyOf?.name ?? ''}`} description="Os pedidos guardam sempre o preço em vigor no momento da compra.">
+        <Loadable loading={history.loading} error={history.error} empty={(history.data ?? []).length === 0 && 'Sem alterações de preço registadas.'}>
+          <ul className="divide-y divide-fg/10 text-sm">
+            {(history.data ?? []).map((h, i) => (
+              <li key={i} className="flex flex-wrap justify-between gap-2 py-2">
+                <span>{formatKz(h.old_price_kz)} → <strong>{formatKz(h.new_price_kz)}</strong></span>
+                <span className="text-xs text-fg-muted">{formatDateTime(h.changed_at)} · {h.changed_by ?? '—'}</span>
+              </li>
+            ))}
+          </ul>
+        </Loadable>
+      </Dialog>
+
       {draft && (
         <Dialog open onOpenChange={(v) => !v && setDraft(null)} title={draft.id ? 'Editar categoria' : 'Nova categoria'} className="max-w-2xl">
           <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">
             <div><Label htmlFor="tn">Nome *</Label><input id="tn" className="admin-input" value={draft.name} onChange={set('name')} required minLength={2} maxLength={80} /></div>
             <div><Label htmlFor="tl">Lote</Label><input id="tl" className="admin-input" placeholder="ex.: 1.º Lote" value={draft.lot_label} onChange={set('lot_label')} /></div>
             <div className="sm:col-span-2"><Label htmlFor="td">Descrição</Label><textarea id="td" className="admin-input min-h-[70px]" value={draft.description} onChange={set('description')} /></div>
-            <div><Label htmlFor="tp">Preço (Kz)</Label><input id="tp" className="admin-input" inputMode="decimal" value={draft.price_kz} onChange={set('price_kz')} placeholder="Obrigatório para publicar" /></div>
+            <div>
+              <Label htmlFor="tsm">Modo de venda</Label>
+              <select id="tsm" className="admin-input" value={draft.sale_mode} onChange={(e) => setDraft({ ...draft, sale_mode: e.target.value as Draft['sale_mode'] })}>
+                <option value="directo">Compra directa no site (preço público)</option>
+                <option value="consulta">Por consulta (VIP — proposta individual)</option>
+              </select>
+            </div>
+            {draft.sale_mode === 'directo' ? (
+              <div><Label htmlFor="tp">Preço (Kz)</Label><input id="tp" className="admin-input" inputMode="decimal" value={draft.price_kz} onChange={set('price_kz')} placeholder="Obrigatório para publicar" /></div>
+            ) : (
+              <p className="self-end text-xs text-fg-muted">Sem preço público. O valor é definido em cada proposta VIP (menu “Gestão VIP”).</p>
+            )}
+            <div className="sm:col-span-2"><Label htmlFor="tb">Benefícios (um por linha, máx. 15)</Label><textarea id="tb" className="admin-input min-h-[90px]" value={draft.benefits} onChange={set('benefits')} /></div>
+            <div><Label htmlFor="tbg">Destaque (etiqueta)</Label><input id="tbg" className="admin-input" maxLength={40} placeholder="ex.: Mais exclusivo" value={draft.badge} onChange={set('badge')} /></div>
             <div><Label htmlFor="tq">Quantidade total *</Label><input id="tq" type="number" min={0} className="admin-input" value={draft.quantity_total} onChange={set('quantity_total')} required /></div>
             <div><Label htmlFor="tmo">Máx. por pedido</Label><input id="tmo" type="number" min={1} max={100} className="admin-input" value={draft.max_per_order} onChange={set('max_per_order')} /></div>
             <div><Label htmlFor="tmc">Máx. por cliente (email)</Label><input id="tmc" type="number" min={1} max={500} className="admin-input" value={draft.max_per_customer} onChange={set('max_per_customer')} /></div>

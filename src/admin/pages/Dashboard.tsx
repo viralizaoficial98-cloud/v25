@@ -20,7 +20,16 @@ interface Stats {
   revenue_confirmed_kz: number | null;
   guests_confirmed: number;
   capacity: number | null;
-  by_type: { id: string; name: string; lot_label: string; price_kz: number | null; total: number; reserved: number; sold: number; available: number; published: boolean }[];
+  capacity_available: number | null;
+  reservations_expired: number;
+  checkins: number;
+  vip_requests_total: number;
+  vip_requests_open: number;
+  vip_orders: number;
+  by_type: {
+    id: string; name: string; lot_label: string; price_kz: number | null; total: number; reserved: number; sold: number; available: number;
+    published: boolean; sale_mode: 'directo' | 'consulta'; revenue_kz: number | null;
+  }[];
 }
 
 export default function Dashboard() {
@@ -31,17 +40,22 @@ export default function Dashboard() {
   const cards = data
     ? [
         { label: 'Total de inscrições', value: data.orders_total },
+        ...data.by_type.filter((t) => t.sale_mode === 'directo').map((t) => ({ label: `${t.name} vendidos`, value: t.sold })),
+        { label: 'Solicitações VIP (em aberto)', value: `${data.vip_requests_total} (${data.vip_requests_open})`, to: '/admin/vip', highlight: data.vip_requests_open > 0 },
+        { label: 'Pedidos VIP (proposta aceite)', value: data.vip_orders },
         { label: 'Pedidos pendentes de pagamento', value: data.orders_pending_payment },
         { label: 'Comprovativos em análise', value: data.proofs_in_review, to: finance ? '/admin/pagamentos' : undefined, highlight: data.proofs_in_review > 0 },
         { label: 'Pagamentos aprovados', value: data.payments_approved },
         { label: 'Pagamentos rejeitados', value: data.payments_rejected },
         { label: 'Ingressos emitidos', value: data.tickets_issued },
-        { label: 'Ingressos utilizados', value: data.tickets_used },
+        { label: 'Check-ins realizados', value: data.checkins },
+        { label: 'Reservas expiradas', value: data.reservations_expired },
         ...(data.revenue_confirmed_kz !== null ? [{ label: 'Receita confirmada', value: formatKz(data.revenue_confirmed_kz) }] : []),
         {
           label: 'Convidados confirmados / capacidade',
           value: `${data.guests_confirmed}${data.capacity ? ` / ${data.capacity}` : ''}`,
         },
+        { label: 'Capacidade disponível', value: data.capacity_available ?? 'Não definida' },
       ]
     : [];
 
@@ -56,7 +70,7 @@ export default function Dashboard() {
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {cards.map((c) => {
             const body = (
-              <div className={`h-full rounded-2xl border p-5 ${c.highlight ? 'border-gold/50 bg-gold/10' : 'border-fg/10 bg-paper-soft/70'}`}>
+              <div className={`h-full rounded-2xl border p-5 ${c.highlight ? 'border-gold/50 bg-gold/10' : 'border-fg/10 bg-paper shadow-soft'}`}>
                 <p className="text-xs uppercase tracking-[0.14em] text-fg/50">{c.label}</p>
                 <p className="mt-2 font-display text-4xl text-fg">{c.value}</p>
               </div>
@@ -67,15 +81,15 @@ export default function Dashboard() {
         {data && (
           <Panel title="Capacidade e disponibilidade por categoria" className="mt-6">
             {data.by_type.length === 0 ? (
-              <p className="text-sm text-fg/50">Ainda não existem categorias de ingresso. {role === 'admin' && <Link to="/admin/ingressos" className="text-gold-light underline">Criar ingressos</Link>}</p>
+              <p className="text-sm text-fg/50">Ainda não existem categorias de ingresso. {role === 'admin' && <Link to="/admin/ingressos" className="text-gold-deep underline">Criar ingressos</Link>}</p>
             ) : (
-              <Table head={['Categoria', 'Preço', 'Total', 'Reservados', 'Vendidos', 'Disponíveis', 'Ocupação', 'Estado']}>
+              <Table head={['Categoria', 'Preço', 'Total', 'Reservados', 'Vendidos', 'Disponíveis', 'Ocupação', ...(finance ? ['Receita'] : []), 'Estado']}>
                 {data.by_type.map((t) => {
                   const pct = t.total ? Math.round(((t.sold + t.reserved) / t.total) * 100) : 0;
                   return (
                     <tr key={t.id}>
                       <Td className="font-semibold">{t.name}{t.lot_label && <span className="block text-xs font-normal text-fg/50">{t.lot_label}</span>}</Td>
-                      <Td>{formatKz(t.price_kz)}</Td>
+                      <Td>{t.sale_mode === 'consulta' ? 'Por consulta' : formatKz(t.price_kz)}</Td>
                       <Td>{t.total}</Td>
                       <Td>{t.reserved}</Td>
                       <Td>{t.sold}</Td>
@@ -84,6 +98,7 @@ export default function Dashboard() {
                         <div className="h-2 w-24 rounded-full bg-fg/10"><div className="h-2 rounded-full bg-gold" style={{ width: `${pct}%` }} /></div>
                         <span className="text-xs text-fg/50">{pct}%</span>
                       </Td>
+                      {finance && <Td>{formatKz(t.revenue_kz ?? 0)}</Td>}
                       <Td>{t.published ? <Badge tone="ok">Publicado</Badge> : <Badge>Rascunho</Badge>}</Td>
                     </tr>
                   );

@@ -5,6 +5,8 @@ export interface AsyncState<T> {
   error: unknown;
   loading: boolean;
   reload: () => Promise<void>;
+  /** Substitui os dados localmente (ex.: após uma gravação que devolve o registo actualizado). */
+  setData: (v: T) => void;
 }
 
 /** Carrega dados assíncronos com estados de loading/erro e recarregamento manual. */
@@ -35,5 +37,5 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[] = []): AsyncSt
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
-  return { data, error, loading, reload };
+  return { data, error, loading, reload, setData };
 }

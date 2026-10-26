@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
-  BarChart3, CalendarClock, ClipboardList, FileText, Image, LayoutDashboard, LogOut, Mail, Menu, MessageCircleQuestion,
+  BarChart3, CalendarClock, ClipboardList, Crown, FileText, Globe, Image, Images, LayoutDashboard, LogOut, Mail, Menu, MessageCircleQuestion,
   ScanLine, Settings, ShieldCheck, Ticket, Users, UsersRound, Wallet, X,
 } from 'lucide-react';
 import { Alert, Spinner } from '@/components/ui/misc';
@@ -28,12 +28,17 @@ const EmailsAdmin = lazy(() => import('./pages/EmailsAdmin'));
 const Reports = lazy(() => import('./pages/Reports'));
 const UsersAdmin = lazy(() => import('./pages/UsersAdmin'));
 const AuditLog = lazy(() => import('./pages/AuditLog'));
+const SiteAdmin = lazy(() => import('./pages/SiteAdmin'));
+const GalleryAdmin = lazy(() => import('./pages/GalleryAdmin'));
+const VipAdmin = lazy(() => import('./pages/VipAdmin'));
 
 interface NavItem {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
   roles: StaffRole[];
+  /** Permissão exigida (tabela role_permissions); prevalece sobre o perfil */
+  perm?: string;
   element: ReactNode;
 }
 
@@ -46,9 +51,12 @@ export const NAV_ITEMS: NavItem[] = [
   { to: 'pagamentos', label: 'Validação de pagamentos', icon: Wallet, roles: FIN, element: <Orders preset="review" /> },
   { to: 'pedidos', label: 'Inscrições e pedidos', icon: ClipboardList, roles: FIN, element: <Orders /> },
   { to: 'checkin', label: 'Check-in', icon: ScanLine, roles: ['admin', 'checkin'], element: <CheckIn /> },
+  { to: 'vip', label: 'Gestão VIP', icon: Crown, roles: ADM, perm: 'vip.manage', element: <VipAdmin /> },
   { to: 'ingressos', label: 'Ingressos, lotes e stock', icon: Ticket, roles: ADM, element: <TicketTypes /> },
   { to: 'relatorios', label: 'Relatórios', icon: BarChart3, roles: FIN, element: <Reports /> },
-  { to: 'galeria', label: 'Fotografias e vídeos', icon: Image, roles: ADM, element: <MediaAdmin /> },
+  { to: 'website', label: 'Gestão do Website', icon: Globe, roles: ADM, perm: 'site.manage', element: <SiteAdmin /> },
+  { to: 'galeria-eventos', label: 'Galeria dos Eventos', icon: Images, roles: ADM, perm: 'gallery.manage', element: <GalleryAdmin /> },
+  { to: 'galeria', label: 'Fotografias e vídeos (grupo/memórias)', icon: Image, roles: ADM, element: <MediaAdmin /> },
   { to: 'historia', label: 'Linha do tempo', icon: CalendarClock, roles: ADM, element: <TimelineAdmin /> },
   { to: 'integrantes', label: 'Integrantes', icon: UsersRound, roles: ADM, element: <MembersAdmin /> },
   { to: 'faq', label: 'FAQ', icon: MessageCircleQuestion, roles: ADM, element: <FaqAdmin /> },
@@ -60,15 +68,15 @@ export const NAV_ITEMS: NavItem[] = [
 
 function AuthCard({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(ellipse_at_top,rgba(201,164,92,.15),transparent_60%)] px-4">
-      <div className="w-full max-w-sm space-y-5 rounded-3xl border border-gold/20 bg-paper-soft/80 p-8 shadow-card">
+    <div className="flex min-h-screen items-center justify-center bg-paper-soft bg-[radial-gradient(ellipse_at_top,rgb(var(--gold-pale)),transparent_60%)] px-4">
+      <div className="w-full max-w-sm space-y-5 rounded-3xl border border-gold/20 bg-paper p-8 shadow-card">
         <div className="text-center">
           <Logo className="justify-center" />
           <h1 className="mt-4 text-2xl">{title}</h1>
           {subtitle && <p className="mt-1 text-xs text-fg/50">{subtitle}</p>}
         </div>
         {children}
-        <Link to="/" className="block text-center text-xs text-fg/45 hover:text-gold-light">← Voltar ao site</Link>
+        <Link to="/" className="block text-center text-xs text-fg/45 hover:text-gold-deep">← Voltar ao site</Link>
       </div>
     </div>
   );
@@ -111,7 +119,7 @@ function Login() {
           <Alert tone="ok">Se o email pertencer a uma conta activa, receberá uma ligação válida durante 1 hora.</Alert>
         )}
         <Button type="submit" className="w-full" loading={busy}>{mode === 'login' ? 'Entrar' : 'Enviar ligação'}</Button>
-        <button type="button" className="block w-full text-center text-xs text-gold-light hover:underline" onClick={() => { setMode(mode === 'login' ? 'forgot' : 'login'); setError(null); setSent(false); }}>
+        <button type="button" className="block w-full text-center text-xs text-gold-deep hover:underline" onClick={() => { setMode(mode === 'login' ? 'forgot' : 'login'); setError(null); setSent(false); }}>
           {mode === 'login' ? 'Esqueci-me da palavra-passe' : 'Voltar ao início de sessão'}
         </button>
       </form>
@@ -207,7 +215,7 @@ function ResetPassword() {
 }
 
 function Shell() {
-  const { user, role, loading, needsSetup, signOut } = useAdmin();
+  const { user, role, loading, needsSetup, signOut, can } = useAdmin();
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
   if (pathname.startsWith('/admin/redefinir')) return <ResetPassword />;
@@ -225,7 +233,7 @@ function Shell() {
       </div>
     );
   }
-  const items = NAV_ITEMS.filter((n) => n.roles.includes(role));
+  const items = NAV_ITEMS.filter((n) => (n.perm ? can(n.perm) : n.roles.includes(role)));
   const nav = (
     <nav aria-label="Painel" className="space-y-1">
       {items.map((n) => (
@@ -235,7 +243,7 @@ function Shell() {
           end={n.to === ''}
           onClick={() => setOpen(false)}
           className={({ isActive }) =>
-            cn('flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition', isActive ? 'bg-gold/15 text-gold-light' : 'text-fg/65 hover:bg-fg/5 hover:text-fg')
+            cn('flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition', isActive ? 'bg-gold-pale font-semibold text-gold-deep' : 'text-fg/70 hover:bg-fg/5 hover:text-fg')
           }
         >
           <n.icon className="h-4 w-4 shrink-0" aria-hidden /> {n.label}

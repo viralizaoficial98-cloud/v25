@@ -1,4 +1,6 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import { cn } from '@/lib/cn';
 import { Alert, Spinner } from '@/components/ui/misc';
 import { errorMessage } from '@/lib/errors';
@@ -17,10 +19,10 @@ export function PageHeader({ title, description, actions }: { title: string; des
 
 export function Panel({ children, className, title, actions }: { children: ReactNode; className?: string; title?: ReactNode; actions?: ReactNode }) {
   return (
-    <section className={cn('rounded-2xl border border-fg/10 bg-paper-soft/70 p-5', className)}>
+    <section className={cn('rounded-2xl border border-fg/10 bg-paper p-5 shadow-soft', className)}>
       {(title || actions) && (
         <div className="mb-4 flex items-center justify-between gap-3">
-          {title && <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-gold">{title}</h2>}
+          {title && <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-gold-deep">{title}</h2>}
           {actions}
         </div>
       )}
@@ -73,5 +75,56 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
       </span>
       {label}
     </button>
+  );
+}
+
+/** Confirmação explícita para operações destrutivas ou que afectam o site público. */
+export function ConfirmButton({
+  children,
+  title,
+  description,
+  confirmLabel = 'Confirmar',
+  onConfirm,
+  variant = 'outline',
+  size = 'sm',
+  danger,
+  disabled,
+}: {
+  children: ReactNode;
+  title: string;
+  description?: ReactNode;
+  confirmLabel?: string;
+  onConfirm: () => Promise<unknown> | void;
+  variant?: 'outline' | 'ghost' | 'gold' | 'danger' | 'subtle';
+  size?: 'sm' | 'md';
+  danger?: boolean;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const run = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await onConfirm();
+      setOpen(false);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <Button variant={variant} size={size} disabled={disabled} onClick={() => setOpen(true)}>{children}</Button>
+      <Dialog open={open} onOpenChange={setOpen} title={title} description={description}>
+        {error && <Alert tone="bad" className="mb-4">{error}</Alert>}
+        <div className="flex justify-end gap-3">
+          <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+          <Button variant={danger ? 'danger' : 'gold'} loading={busy} onClick={run}>{confirmLabel}</Button>
+        </div>
+      </Dialog>
+    </>
   );
 }

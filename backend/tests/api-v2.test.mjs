@@ -163,6 +163,11 @@ test('galeria: álbum, fotografias com miniatura, vídeos, capa, ordem, publica�
   err(await admin.post(`/admin/gallery/albums/${album.id}/videos`, { url: 'https://evil.example/video.mp4' }), 'VIDEO_URL_NAO_AUTORIZADO', 422);
   // capa, ordem, legenda, publicação
   await admin.put(`/admin/gallery/albums/${album.id}`, { ...album, cover_item_id: ids[1], published: true });
+  // Actualização parcial (só a capa) não apaga os restantes campos
+  const partial = await admin.put(`/admin/gallery/albums/${album.id}`, { cover_item_id: ids[1] });
+  assert.equal(partial.data.album.category, 'Concertos');
+  assert.equal(partial.data.album.location, 'Luanda');
+  assert.equal(partial.data.album.published, true);
   const ord = await admin.put(`/admin/gallery/albums/${album.id}/order`, { ids: [v.data.id, ids[1], ids[0]] });
   assert.deepEqual(ord.data.items.map((i) => i.id), [v.data.id, ids[1], ids[0]]);
   await admin.put(`/admin/gallery/items/${ids[0]}`, { caption: 'Nova legenda', alt_text: 'Texto alternativo' });
