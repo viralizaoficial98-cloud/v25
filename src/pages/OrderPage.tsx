@@ -108,7 +108,7 @@ export default function OrderPage() {
       )}
       {actionError && <Alert tone="bad" className="mt-6">{actionError}</Alert>}
 
-      <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-8">
           {order.status === 'iniciada' && (
             <div className="rounded-[1.75rem] border border-gold/30 bg-paper p-6 shadow-soft">

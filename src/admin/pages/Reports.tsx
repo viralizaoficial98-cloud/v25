@@ -134,6 +134,7 @@ export default function Reports() {
           <div><Label htmlFor="rf-from">De (data)</Label><input id="rf-from" type="date" className="admin-input" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></div>
           <div><Label htmlFor="rf-to">Até (data)</Label><input id="rf-to" type="date" className="admin-input" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} /></div>
         </div>
+        <p className="mt-3 text-xs text-fg-muted" aria-live="polite">Filtros activos: <strong className="text-fg">{filterLabel()}</strong></p>
       </Panel>
       <div className="grid gap-4 md:grid-cols-2">
         <Panel title="Pedidos, participantes e pagamentos">

@@ -1,6 +1,7 @@
 // Teste ponta-a-ponta pela interface: build de produção + API PHP + MySQL/MariaDB reais.
-// Percorre: instalação → ingressos → inscrição/checkout → comprovativo → aprovação →
-// ingressos/QR/PDF → check-in (e reutilização) → relatórios, com 3 perfis diferentes.
+// Percorre (v2): landing White Premium → instalação → gestão comercial → CMS (rascunho,
+// pré-visualização, publicação) → galeria → compras Normal/Premium → VIP (proposta e
+// aceitação) → aprovação manual → ingressos/QR/PDF → check-in → relatórios, com 3 perfis.
 import { spawnSync } from 'node:child_process';
 import { readFileSync, mkdirSync, writeFileSync, mkdtempSync } from 'node:fs';
 import os from 'node:os';
@@ -43,6 +44,21 @@ async function newPage(name, viewport = { width: 1366, height: 860 }) {
   page.on('response', (r) => r.status() >= 500 && problems.push(`[${name}] HTTP ${r.status()} ${r.url()}`));
   return page;
 }
+// Percorre a página para disparar animações de entrada e imagens lazy antes de uma captura completa
+async function scrollThrough(page) {
+  await page.evaluate(async () => {
+    for (let y = 0; y < document.body.scrollHeight; y += Math.round(window.innerHeight * 0.7)) {
+      window.scrollTo(0, y);
+      await new Promise((r) => setTimeout(r, 350));
+    }
+    window.scrollTo(0, 0);
+  });
+  await page.waitForTimeout(900);
+}
+async function noOverflow(page, where) {
+  const o = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  if (o > 0) throw new Error(`Scroll horizontal no telemóvel (${where}): ${o}px`);
+}
 const shot = (page, name) => page.screenshot({ path: path.join(SHOTS, `${name}.png`) });
 
 const ADMIN = { email: 'admin@renewangola.online', password: 'Admin-V25-segura-1' };
@@ -58,15 +74,75 @@ async function login(page, u) {
 }
 
 let exitCode = 0;
+const IBAN = 'AO06 0040 0000 4006 5995 1016 6';
+const card = (page, name) => page.locator('#ingressos li', { has: page.getByRole('heading', { name, exact: true }) });
+
+let proofSeq = 0;
+async function uploadProof(page) {
+  // Cada pedido tem o seu próprio comprovativo (o sistema bloqueia ficheiros reutilizados)
+  const file = path.join(stack.env.V25_TMP, `comprovativo-${++proofSeq}.png`);
+  writeFileSync(file, await sharp({ create: { width: 600 + proofSeq, height: 400, channels: 3, background: '#ffffff' } }).png().toBuffer());
+  await page.getByLabel('Ficheiro do comprovativo').setInputFiles(file);
+  await page.getByRole('button', { name: 'Enviar comprovativo' }).click();
+  await page.getByRole('heading', { name: 'PAGAMENTO EM ANÁLISE' }).waitFor();
+  await page.getByText('O comprovativo ainda não confirma o pagamento.').waitFor();
+}
+
+async function buy(page, category, qty, who) {
+  await page.goto(BASE + '/');
+  await card(page, category).getByRole('link', { name: /comprar ingresso/i }).click();
+  await page.getByRole('heading', { name: '1. Escolha o seu ingresso' }).waitFor();
+  const radio = page.getByRole('radio', { name: new RegExp(category) });
+  if ((await radio.getAttribute('aria-checked')) !== 'true') throw new Error(`Categoria ${category} não pré-seleccionada`);
+  for (let i = 1; i < qty; i++) await page.getByRole('button', { name: 'Aumentar quantidade' }).click();
+  await page.getByRole('button', { name: 'Continuar' }).click();
+  await page.getByLabel('Nome completo').fill(who.name);
+  await page.getByLabel(/^Email/).fill(who.email);
+  await page.getByRole('textbox', { name: /Telefone/ }).fill(who.phone);
+  await page.getByRole('checkbox').check();
+  await page.getByRole('button', { name: /Rever o pedido/ }).click();
+  await page.getByRole('heading', { name: '3. Confirme o seu pedido' }).waitFor();
+}
+
+async function orderCode(page) {
+  await page.waitForURL(/\/pedido\/V25-/);
+  const h1 = page.getByRole('heading', { level: 1, name: /^V25-[A-Z2-9]{6}$/ });
+  await h1.waitFor();
+  return (await h1.innerText()).trim();
+}
+
+async function approve(fin, code, amount) {
+  await fin.getByRole('link', { name: 'Validação de pagamentos' }).click();
+  await fin.getByRole('cell', { name: code }).waitFor();
+  await fin.getByRole('row', { name: new RegExp(code) }).getByRole('button', { name: 'Abrir' }).click();
+  await fin.getByRole('button', { name: 'Aprovar pagamento' }).click();
+  await fin.getByLabel('Referência/ID da transacção no banco *').fill(`TRX-${code}`);
+  await fin.getByLabel('Valor confirmado no extracto (Kz) *').fill(String(amount));
+  await fin.getByRole('checkbox').check();
+  await fin.getByRole('button', { name: 'Aprovar e emitir ingressos' }).click();
+  await fin.getByText('Pagamento aprovado e ingressos emitidos.').waitFor();
+  await fin.keyboard.press('Escape');
+}
+
 try {
-  // ── Landing page com dados da API ──────────────────────────────────────────
+  // ── Landing page (White Premium) com dados da API e do CMS ────────────────
   const visitor = await newPage('visitante');
   await visitor.goto(BASE + '/');
-  await visitor.getByRole('heading', { name: /V25/ }).first().waitFor();
+  await visitor.getByRole('heading', { level: 1, name: 'V25 — O LEGADO' }).waitFor();
+  await visitor.getByText('25 Anos de Música, Fé, Amizade e História').first().waitFor();
+  await visitor.getByText('12 500 Kz').waitFor();
+  await visitor.getByText('25 000 Kz').waitFor();
+  await card(visitor, 'VIP').getByText('Por consulta', { exact: true }).first().waitFor();
   await visitor.getByText('A AGUARDAR ABERTURA DAS VENDAS').waitFor();
-  await visitor.waitForTimeout(1500);
+  if (await visitor.getByRole('link', { name: /comprar ingresso/i }).count()) throw new Error('Compra disponível com vendas fechadas');
+  const bg = await visitor.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  if (bg !== 'rgb(255, 255, 255)') throw new Error('Fundo não é branco: ' + bg);
+  await visitor.getByAltText('Renew — Criando momentos épicos para si').waitFor();
+  await visitor.waitForTimeout(1200);
   await shot(visitor, '01-landing-desktop');
-  step('Landing page carregada a partir da API (vendas fechadas: A AGUARDAR ABERTURA DAS VENDAS)');
+  await scrollThrough(visitor);
+  await visitor.screenshot({ path: path.join(SHOTS, '01b-landing-desktop-completa.png'), fullPage: true });
+  step('Landing White Premium: textos oficiais do CMS, Normal 12 500 Kz, Premium 25 000 Kz, VIP por consulta, vendas fechadas, logótipo Renew no rodapé');
 
   // ── Instalação: primeiro administrador ─────────────────────────────────────
   const admin = await newPage('admin');
@@ -81,19 +157,86 @@ try {
   await admin.getByRole('heading', { name: 'Dashboard' }).waitFor();
   step('Instalação: primeiro administrador criado com SETUP_TOKEN e sessão iniciada');
 
-  // ── Categoria de ingresso + abertura de vendas ─────────────────────────────
+  // ── Gestão comercial: quantidades + abertura de vendas ─────────────────────
   await admin.getByRole('link', { name: 'Ingressos, lotes e stock' }).click();
-  await admin.getByRole('button', { name: 'Nova categoria' }).click();
-  await admin.getByLabel('Nome *').fill('Normal');
-  await admin.getByLabel('Lote').fill('1.º Lote');
-  await admin.getByLabel('Preço (Kz)').fill('15000');
-  await admin.getByLabel('Quantidade total *').fill('100');
-  await admin.getByRole('switch', { name: 'Publicado no site' }).click();
+  for (const [name, qty] of [['Normal', '100'], ['Premium', '50'], ['VIP', '10']]) {
+    await admin.getByRole('button', { name: `Editar ${name}`, exact: true }).click();
+    await admin.getByLabel('Quantidade total *').fill(qty);
+    await admin.getByRole('button', { name: 'Guardar' }).click();
+    await admin.getByText('Ingresso guardado.').waitFor();
+  }
+  await admin.getByRole('button', { name: 'Editar Normal', exact: true }).click();
+  await admin.getByLabel('Preço (Kz)').fill('13000');
   await admin.getByRole('button', { name: 'Guardar' }).click();
   await admin.getByText('Ingresso guardado.').waitFor();
+  await admin.getByRole('button', { name: 'Editar Normal', exact: true }).click();
+  await admin.getByLabel('Preço (Kz)').fill('12500');
+  await admin.getByRole('button', { name: 'Guardar' }).click();
+  await admin.getByText('Ingresso guardado.').waitFor();
+  await admin.getByRole('button', { name: 'Histórico de preços de Normal' }).click();
+  await admin.getByRole('dialog').getByText('13 000 Kz').first().waitFor();
+  await admin.keyboard.press('Escape');
   await admin.getByRole('switch', { name: 'Vendas fechadas' }).click();
   await admin.getByText('Vendas abertas.').waitFor();
-  step('Administrador criou categoria (15 000 Kz, 100 lugares) e abriu as vendas');
+  step('Gestão comercial: stock Normal 100 / Premium 50 / VIP 10, histórico de preços registado, vendas abertas');
+
+  // ── CMS: rascunho → pré-visualização → publicação ─────────────────────────
+  const SLOGAN = 'Teste E2E — uma celebração para recordar.';
+  await admin.getByRole('link', { name: 'Gestão do Website' }).click();
+  await admin.getByRole('heading', { name: 'Gestão do Website' }).waitFor();
+  await admin.getByLabel('Slogan').fill(SLOGAN);
+  await admin.getByRole('button', { name: 'Guardar rascunho' }).click();
+  await admin.getByText(/Rascunho guardado/).waitFor();
+  await visitor.reload();
+  await visitor.getByRole('heading', { level: 1, name: 'V25 — O LEGADO' }).waitFor();
+  if (await visitor.getByText(SLOGAN).count()) throw new Error('Rascunho visível ao público');
+  const preview = await admin.context().newPage();
+  await preview.goto(`${BASE}/?preview=1`);
+  await preview.getByText('Pré-visualização de rascunhos').waitFor();
+  await preview.getByText(SLOGAN).waitFor();
+  await shot(preview, '02-cms-preview');
+  await preview.close();
+  await admin.getByRole('button', { name: 'Publicar' }).click();
+  await admin.getByRole('button', { name: 'Publicar agora' }).click();
+  await admin.getByText(/Publicado\. O site público/).waitFor();
+  await shot(admin, '03-cms-editor');
+  await visitor.reload();
+  await visitor.getByText(SLOGAN).waitFor();
+  await admin.getByRole('button', { name: 'Histórico' }).click();
+  await admin.getByRole('dialog').getByText('Publicado').first().waitFor();
+  await admin.keyboard.press('Escape');
+  step('CMS: slogan editado em rascunho (invisível ao público), pré-visualizado, publicado e registado no histórico');
+
+  // ── Galeria dos eventos: álbum, upload múltiplo, publicação ───────────────
+  const photos = [];
+  for (const [i, color] of ['#c9a45c', '#8a6527', '#f3e7cf'].entries()) {
+    const f = path.join(stack.env.V25_TMP, `foto-${i}.jpg`);
+    writeFileSync(f, await sharp({ create: { width: 1600, height: 1000 + i * 100, channels: 3, background: color } }).jpeg().toBuffer());
+    photos.push(f);
+  }
+  await admin.getByRole('link', { name: 'Galeria dos Eventos' }).click();
+  await admin.getByRole('button', { name: 'Novo álbum' }).click();
+  await admin.getByLabel('Nome do evento / álbum').fill('Concerto de Natal 2019');
+  await admin.getByLabel('Categoria').fill('Concertos');
+  await admin.getByLabel('Data do evento').fill('2019-12-15');
+  await admin.getByLabel('Local').fill('Luanda');
+  await admin.getByRole('switch', { name: 'Publicado no site' }).click();
+  await admin.getByRole('button', { name: 'Guardar' }).click();
+  await admin.getByRole('heading', { name: 'Concerto de Natal 2019' }).waitFor();
+  await admin.getByLabel('Ficheiros para o álbum').setInputFiles(photos);
+  await admin.getByText('Itens do álbum (3)').waitFor({ timeout: 30000 });
+  await shot(admin, '04-galeria-admin');
+  await visitor.reload();
+  await visitor.locator('#galeria').scrollIntoViewIfNeeded();
+  await visitor.getByRole('button', { name: /Concerto de Natal 2019/ }).click();
+  await visitor.getByRole('heading', { name: 'Concerto de Natal 2019' }).waitFor();
+  await visitor.getByRole('button', { name: /Abrir fotografia/ }).first().click();
+  await visitor.getByText('1 / 3').waitFor();
+  await visitor.keyboard.press('ArrowRight');
+  await visitor.getByText('2 / 3').waitFor();
+  await shot(visitor, '05-galeria-lightbox');
+  await visitor.keyboard.press('Escape');
+  step('Galeria dos Eventos: álbum criado, 3 fotografias carregadas (WebP + miniaturas), publicado, aberto no site com lightbox e navegação');
 
   // ── Equipa ────────────────────────────────────────────────────────────────
   await admin.getByRole('link', { name: 'Utilizadores e permissões' }).click();
@@ -108,83 +251,134 @@ try {
   }
   step('Administrador criou utilizadores Financeiro e Operador de check-in');
 
-  // ── Cliente (telemóvel): inscrição e checkout ─────────────────────────────
+  // ── Compra Normal (telemóvel): etapas 1–5 ─────────────────────────────────
   const client = await newPage('cliente', { width: 390, height: 844 });
   await client.goto(BASE + '/');
   await client.locator('#ingressos').scrollIntoViewIfNeeded();
-  await client.getByText('15 000 Kz').first().waitFor();
-  await shot(client, '02-ingressos-mobile');
-  await client.getByRole('link', { name: 'Comprar ingresso' }).click();
-  await client.getByRole('heading', { name: 'Comprar ingresso' }).waitFor();
+  await shot(client, '06-ingressos-mobile');
+  await card(client, 'Normal').getByRole('link', { name: /comprar ingresso/i }).click();
+  await client.getByRole('button', { name: 'Aumentar quantidade' }).click();
+  await client.getByRole('button', { name: 'Continuar' }).click();
   await client.getByLabel('Nome completo').fill('Maria da Silva');
   await client.getByLabel(/^Email/).fill('maria@exemplo.ao');
   await client.getByRole('textbox', { name: /Telefone/ }).fill('923 456 789');
-  await client.getByRole('button', { name: 'Continuar para revisão' }).click();
+  await client.getByRole('button', { name: /Rever o pedido/ }).click();
   await client.getByText('É necessário o seu consentimento para continuar.').waitFor();
   await client.getByRole('checkbox').check();
-  await client.getByRole('button', { name: 'Continuar para revisão' }).click();
+  await client.getByRole('button', { name: /Rever o pedido/ }).click();
   await client.getByText('+244923456789').waitFor();
-  await shot(client, '03-checkout-revisao-mobile');
-  await client.getByRole('button', { name: /Confirmar pedido/ }).click();
-  await client.waitForURL(/\/pedido\/V25-/);
-  const h1 = client.getByRole('heading', { level: 1, name: /^V25-[A-Z2-9]{6}$/ });
-  await h1.waitFor();
-  const code = (await h1.innerText()).trim();
-  if (!/^V25-[A-Z2-9]{6}$/.test(code)) throw new Error('Código do pedido inesperado: ' + code);
-  await client.getByText('AO06 0040 0000 4006 5995 1016 6').waitFor();
-  await client.getByRole('button', { name: 'Copiar IBAN' }).waitFor();
-  await shot(client, '04-pedido-pagamento-mobile');
-  step(`Cliente criou o pedido ${code} pelo checkout (validação de consentimento, telefone +244 normalizado, dados bancários)`);
+  await client.getByText('Total a pagar').waitFor();
+  await client.getByRole('button', { name: 'Voltar e corrigir' }).click();
+  await client.getByLabel('Nome completo').fill('Maria da Silva Santos');
+  await client.getByRole('button', { name: /Rever o pedido/ }).click();
+  await client.getByText('Maria da Silva Santos').waitFor();
+  if (!(await client.getByText('25 000 Kz').count())) throw new Error('Resumo sem total 2 × 12 500');
+  await noOverflow(client, 'resumo do checkout');
+  await shot(client, '07-checkout-resumo-mobile');
+  await client.getByRole('button', { name: /Confirmar e avançar para pagamento/ }).click();
+  const code = await orderCode(client);
+  await client.getByText('Etapa 4 · Pagamento').waitFor();
+  await client.getByText(IBAN).waitFor();
+  await client.getByText('27 LUAS COMUNICACAO E MARKETING SU LDA').waitFor();
+  await client.getByRole('tab', { name: 'Transferência Express' }).click();
+  await client.getByText('920000000').waitFor();
+  await noOverflow(client, 'pagamento');
+  await shot(client, '08-pagamento-express-mobile');
+  await uploadProof(client);
+  await client.getByText(code).first().waitFor();
+  await client.getByText('Transferência Express', { exact: true }).last().waitFor();
+  await noOverflow(client, 'pagamento em análise');
+  await shot(client, '09-pagamento-em-analise-mobile');
+  step(`Compra Normal ${code}: seleção (2 × 12 500), dados (+244), resumo com “voltar e corrigir”, pagamento Express, comprovativo → PAGAMENTO EM ANÁLISE`);
 
-  // ── Comprovativo ──────────────────────────────────────────────────────────
-  const proof = path.join(stack.env.V25_TMP, 'comprovativo.png');
-  writeFileSync(proof, await sharp({ create: { width: 600, height: 400, channels: 3, background: '#ffffff' } }).png().toBuffer());
-  await client.getByLabel('Ficheiro do comprovativo').setInputFiles(proof);
-  await client.getByRole('button', { name: 'Enviar comprovativo' }).click();
-  await client.getByRole('heading', { name: 'Comprovativo em análise' }).waitFor();
-  await client.getByText('Isto ainda não confirma o pagamento').waitFor();
-  step('Cliente enviou o comprovativo; pedido em análise, sem ingresso emitido');
+  // ── Compra Premium (desktop, transferência bancária) ──────────────────────
+  const premium = await newPage('cliente-premium');
+  await buy(premium, 'Premium', 1, { name: 'João Baptista', email: 'joao@exemplo.ao', phone: '912 345 678' });
+  await premium.getByRole('button', { name: /Confirmar e avançar para pagamento/ }).click();
+  const codePremium = await orderCode(premium);
+  await premium.getByText(IBAN).waitFor();
+  await uploadProof(premium);
+  step(`Compra Premium ${codePremium}: 25 000 Kz por transferência bancária, comprovativo enviado`);
 
-  // ── Financeiro: análise e aprovação ───────────────────────────────────────
+  // ── VIP: solicitação → proposta → aceitação → pedido de pagamento ─────────
+  const vip = await newPage('cliente-vip');
+  await vip.goto(BASE + '/');
+  await card(vip, 'VIP').getByRole('button', { name: /solicitar acesso vip/i }).click();
+  const dlg = vip.getByRole('dialog');
+  await dlg.getByLabel('Nome completo').fill('Empresa Exemplo Lda');
+  await dlg.getByLabel(/^Email/).fill('eventos@empresa.ao');
+  await dlg.getByLabel('Participantes').fill('4');
+  await dlg.getByRole('textbox', { name: /Telefone/ }).fill('934 000 111');
+  await dlg.getByLabel(/Mensagem/).fill('Mesa para a direcção da empresa.');
+  await dlg.getByRole('checkbox').check();
+  await shot(vip, '10-vip-solicitacao');
+  await dlg.getByRole('button', { name: 'Enviar solicitação' }).click();
+  await vip.waitForURL(/\/vip\/VIP-/);
+  await vip.getByText('Solicitação recebida').waitFor();
+  await vip.getByText('A aguardar proposta').waitFor();
+  const vipCode = (await vip.getByRole('heading', { level: 1 }).innerText()).trim();
+
+  await admin.getByRole('link', { name: 'Gestão VIP' }).click();
+  await admin.getByRole('row', { name: new RegExp(vipCode) }).getByRole('button', { name: 'Abrir' }).click();
+  await admin.getByText('Mesa para a direcção da empresa.').waitFor();
+  await admin.getByLabel('N.º de ingressos').fill('4');
+  await admin.getByLabel('Valor total (Kz)').fill('200000');
+  await admin.getByLabel('Condições individuais').fill('Mesa reservada para 4 pessoas, cocktail de boas-vindas e lugar na zona VIP.');
+  await admin.getByRole('button', { name: 'Enviar proposta' }).click();
+  await admin.getByText(/Proposta enviada ao cliente/).waitFor();
+  await shot(admin, '11-vip-admin-proposta');
+
+  await vip.getByRole('button', { name: 'Actualizar' }).click();
+  await vip.getByText('200 000 Kz').first().waitFor();
+  await vip.getByText(/Mesa reservada para 4 pessoas/).waitFor();
+  await shot(vip, '12-vip-proposta-cliente');
+  await vip.getByRole('button', { name: /Aceitar e avançar para pagamento/ }).click();
+  await vip.getByRole('button', { name: 'Sim, aceitar' }).click();
+  const codeVip = await orderCode(vip);
+  await vip.getByText('200 000 Kz').first().waitFor();
+  await vip.getByText(IBAN).waitFor();
+  await uploadProof(vip);
+  step(`VIP ${vipCode}: solicitação sem preço público → proposta de 200 000 Kz com condições → aceite pelo cliente → pedido ${codeVip} → comprovativo`);
+
+  // ── Financeiro: aprovação manual (Normal e VIP) ───────────────────────────
   const fin = await newPage('financeiro');
   await login(fin, FIN);
   if (await fin.getByRole('link', { name: 'Utilizadores e permissões' }).count()) throw new Error('Financeiro vê gestão de utilizadores');
+  if (await fin.getByRole('link', { name: 'Gestão do Website' }).count()) throw new Error('Financeiro vê o CMS');
   await fin.getByRole('link', { name: 'Validação de pagamentos' }).click();
-  await fin.getByRole('cell', { name: code }).waitFor();
   await fin.getByRole('row', { name: new RegExp(code) }).getByRole('button', { name: 'Abrir' }).click();
   const [popup] = await Promise.all([fin.waitForEvent('popup'), fin.getByRole('button', { name: /Ver \(link temporário\)/ }).click()]);
   await popup.waitForLoadState();
   const proofUrl = popup.url();
-  // O documento do comprovativo é servido com CSP "sandbox"; verificamos a resposta a partir da sessão do financeiro
-  const proofResp = await fin.evaluate(async (u) => { const r = await fetch(u); return { status: r.status, type: r.headers.get('content-type'), csp: r.headers.get('content-security-policy') }; }, proofUrl);
+  const proofResp = await fin.evaluate(async (u) => { const r = await fetch(u); return { status: r.status, type: r.headers.get('content-type') }; }, proofUrl);
   const anonResp = await visitor.evaluate(async (u) => (await fetch(u)).status, proofUrl);
   if (anonResp !== 401) throw new Error('Comprovativo acessível sem sessão: ' + anonResp);
   if (proofResp.status !== 200 || proofResp.type !== 'image/png') throw new Error('Comprovativo não abriu: ' + JSON.stringify(proofResp));
   await popup.close();
-  await fin.getByRole('dialog').getByText('Em análise', { exact: true }).waitFor();
-  await fin.getByRole('button', { name: 'Aprovar pagamento' }).click();
-  await fin.getByLabel('Referência/ID da transacção no banco *').fill('TRX-E2E-0001');
-  await fin.getByLabel('Valor confirmado no extracto (Kz) *').fill('15000');
-  await fin.getByRole('checkbox').check();
-  await shot(fin, '05-aprovacao-financeiro');
-  await fin.getByRole('button', { name: 'Aprovar e emitir ingressos' }).click();
-  await fin.getByText('Pagamento aprovado e ingressos emitidos.').waitFor();
-  step('Financeiro abriu o comprovativo (privado, via API) e aprovou com referência e valor conferido');
+  await fin.keyboard.press('Escape');
+  await approve(fin, code, 25000);
+  await approve(fin, codeVip, 200000);
+  await shot(fin, '13-pagamentos-financeiro');
+  step('Financeiro abriu o comprovativo (privado, 401 sem sessão) e aprovou manualmente os pedidos Normal e VIP');
 
-  // ── Cliente: ingresso, QR e PDF ───────────────────────────────────────────
+  // ── Cliente: ingressos, QR e PDF ──────────────────────────────────────────
   await client.reload();
   await client.getByRole('heading', { name: 'Os seus ingressos' }).waitFor();
-  const qr = client.getByRole('img', { name: /QR Code do ingresso T-/ });
-  await qr.waitFor();
-  const ticketCode = (await qr.getAttribute('alt')).replace('QR Code do ingresso ', '');
-  await shot(client, '06-ingresso-mobile');
+  const qrs = client.getByRole('img', { name: /QR Code do ingresso T-/ });
+  await qrs.first().waitFor();
+  if ((await qrs.count()) !== 2) throw new Error('Esperados 2 ingressos individuais');
+  const ticketCode = (await qrs.first().getAttribute('alt')).replace('QR Code do ingresso ', '');
+  await shot(client, '14-ingressos-mobile');
   const [download] = await Promise.all([client.waitForEvent('download'), client.getByRole('button', { name: 'Descarregar PDF' }).click()]);
   const pdfPath = path.join(stack.env.V25_TMP, 'ingresso.pdf');
   await download.saveAs(pdfPath);
   await download.saveAs(path.join(SHOTS, 'ingresso.pdf'));
   const pdf = readFileSync(pdfPath);
   if (pdf.subarray(0, 5).toString() !== '%PDF-') throw new Error('PDF inválido');
-  step(`Ingresso ${ticketCode} emitido com QR Code; PDF descarregado (${pdf.length} bytes, %PDF válido)`);
+  await vip.reload();
+  await vip.getByRole('img', { name: /QR Code do ingresso T-/ }).first().waitFor();
+  if ((await vip.getByRole('img', { name: /QR Code do ingresso T-/ }).count()) !== 4) throw new Error('VIP: esperados 4 ingressos');
+  step(`Ingressos individuais emitidos com QR assinado (2 Normal, 4 VIP); PDF descarregado (${pdf.length} bytes)`);
 
   // ── Check-in ──────────────────────────────────────────────────────────────
   const op = await newPage('checkin');
@@ -194,39 +388,58 @@ try {
   await op.getByLabel('Código do ingresso').fill(ticketCode);
   await op.getByRole('button', { name: 'Validar' }).click();
   await op.getByRole('status').getByText('ENTRADA VALIDADA').waitFor();
-  await shot(op, '07-checkin-ok');
+  await shot(op, '15-checkin-ok');
   await op.getByLabel('Código do ingresso').fill(ticketCode);
   await op.getByRole('button', { name: 'Validar' }).click();
   await op.getByRole('status').getByText('JÁ UTILIZADO').waitFor();
   await op.getByText(/por Operador Porta/).waitFor();
-  await shot(op, '08-checkin-reutilizacao');
-  step('Operador validou a entrada; segunda leitura bloqueada (JÁ UTILIZADO, com hora e operador)');
+  step('Check-in: entrada validada; segunda leitura bloqueada (JÁ UTILIZADO, com hora e operador)');
 
-  // ── Relatórios ────────────────────────────────────────────────────────────
-  await fin.keyboard.press('Escape');
+  // ── Relatórios, dashboard ─────────────────────────────────────────────────
   await fin.getByRole('link', { name: 'Relatórios' }).click();
+  // A página é carregada a pedido: repete a escolha se coincidir com a montagem do React
+  for (let i = 0; i < 5 && !(await fin.getByText('Origem: VIP').count()); i++) {
+    await fin.getByLabel('Origem').selectOption('vip');
+    await fin.waitForTimeout(200);
+  }
+  await fin.getByText('Origem: VIP').waitFor();
   const [csv] = await Promise.all([fin.waitForEvent('download'), fin.getByRole('button', { name: 'Pedidos (CSV)' }).click()]);
   const csvPath = path.join(stack.env.V25_TMP, 'pedidos.csv');
   await csv.saveAs(csvPath);
   const csvText = readFileSync(csvPath, 'utf8');
-  if (!csvText.includes(code) || !csvText.includes('TRX-E2E-0001')) throw new Error('CSV sem o pedido');
+  if (!csvText.includes(codeVip) || csvText.includes(code)) throw new Error('CSV filtrado por origem VIP incorrecto:\n' + csvText.slice(0, 600));
+  const [pdfRep] = await Promise.all([fin.waitForEvent('download'), fin.getByRole('button', { name: /Relatório de vendas \(PDF\)/ }).click()]);
+  if ((await pdfRep.path()) === null) throw new Error('PDF de relatório não gerado');
   await fin.getByRole('link', { name: 'Dashboard' }).click();
+  await fin.getByText('Normal vendidos').waitFor();
   await fin.getByText('Receita confirmada').waitFor();
-  await fin.getByText('15 000 Kz').first().waitFor();
-  await shot(fin, '09-dashboard-financeiro');
-  step('Financeiro exportou CSV de pedidos e viu a receita confirmada no dashboard');
+  await fin.getByText('225 000 Kz').first().waitFor();
+  await shot(fin, '16-dashboard-financeiro');
+  step('Relatórios: CSV filtrado por origem VIP, PDF com filtros; dashboard com vendidos por categoria e receita confirmada 225 000 Kz');
 
-  // Cliente vê o ingresso como utilizado
   await client.reload();
   await client.getByText('Utilizado').first().waitFor();
   step('Página do cliente mostra o ingresso como utilizado');
 
-  // Acessibilidade básica: imagens com alt e um único h1 na landing
+  // Acessibilidade e responsividade
+  await visitor.goto(BASE + '/');
+  await visitor.getByRole('heading', { level: 1 }).waitFor();
   const a11y = await visitor.evaluate(() => ({ imgsSemAlt: [...document.images].filter((i) => !i.hasAttribute('alt')).length, h1: document.querySelectorAll('h1').length }));
   if (a11y.imgsSemAlt || a11y.h1 !== 1) throw new Error('Acessibilidade: ' + JSON.stringify(a11y));
+  await client.goto(BASE + '/');
+  await client.getByRole('heading', { level: 1 }).waitFor();
+  await scrollThrough(client);
+  await client.screenshot({ path: path.join(SHOTS, '17-landing-mobile-completa.png'), fullPage: true });
+  await visitor.reload();
+  await visitor.getByRole('heading', { level: 1 }).waitFor();
+  await scrollThrough(visitor);
+  await visitor.screenshot({ path: path.join(SHOTS, '19-landing-desktop-vendas-abertas.png'), fullPage: true });
   const overflow = await client.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   if (overflow > 0) throw new Error('Scroll horizontal no telemóvel: ' + overflow + 'px');
-  step('Acessibilidade básica (alt em imagens, h1 único) e sem scroll horizontal no telemóvel');
+  await client.getByRole('button', { name: 'Abrir menu' }).click();
+  await client.getByRole('link', { name: 'Galeria' }).waitFor();
+  await shot(client, '18-menu-mobile');
+  step('Acessibilidade básica (alt em imagens, h1 único), menu móvel e sem scroll horizontal no telemóvel');
 } catch (e) {
   exitCode = 1;
   console.error('✘ FALHOU:', e.message);

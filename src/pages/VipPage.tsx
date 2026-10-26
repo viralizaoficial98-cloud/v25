@@ -102,7 +102,7 @@ export default function VipPage() {
       <Alert tone={st.tone} title={st.label} className="mt-8">{st.help}{vip.status_reason && <> Motivo: {vip.status_reason}</>}</Alert>
       {actionError && <Alert tone="bad" className="mt-4">{actionError}</Alert>}
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-6">
           {p && p.status !== 'substituida' ? (
             <section className="relative overflow-hidden rounded-[1.75rem] border border-gold/40 bg-paper p-6 shadow-card md:p-8" aria-labelledby="prop-t">

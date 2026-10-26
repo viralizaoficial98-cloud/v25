@@ -182,7 +182,7 @@ export default function Checkout() {
     <Shell title={mode === 'reserva' ? 'Reservar lugar' : 'Comprar ingresso'}>
       <CheckoutSteps current={STEP_INDEX[step]} />
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
         {step === 'selecao' && (
           <section className="space-y-6 rounded-[1.75rem] border border-fg/10 bg-paper p-6 shadow-soft md:p-8" aria-labelledby="sel-t">
             <h2 id="sel-t" className="text-3xl font-semibold">1. Escolha o seu ingresso</h2>
