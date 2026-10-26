@@ -5,11 +5,13 @@ import { Navbar } from '@/components/site/Navbar';
 import { Footer } from '@/components/site/Footer';
 import { Spinner } from '@/components/ui/misc';
 import { SettingsProvider } from '@/hooks/useSettings';
+import { SiteProvider } from '@/hooks/useSite';
 import Landing from '@/pages/Landing';
 
 const Checkout = lazy(() => import('@/pages/Checkout'));
 const OrderPage = lazy(() => import('@/pages/OrderPage'));
 const Lookup = lazy(() => import('@/pages/Lookup'));
+const VipPage = lazy(() => import('@/pages/VipPage'));
 const Legal = lazy(() => import('@/pages/Legal'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const AdminApp = lazy(() => import('@/admin/AdminApp'));
@@ -46,6 +48,7 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <SettingsProvider>
+        <SiteProvider>
         <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '') || '/'}>
           <ScrollManager />
           <Routes>
@@ -54,6 +57,7 @@ export default function App() {
               <Route path="checkout" element={<Checkout />} />
               <Route path="pedido/:code" element={<OrderPage />} />
               <Route path="consultar" element={<Lookup />} />
+              <Route path="vip/:code" element={<VipPage />} />
               <Route path="privacidade" element={<Legal kind="privacidade" />} />
               <Route path="termos" element={<Legal kind="termos" />} />
               <Route path="*" element={<NotFound />} />
@@ -68,6 +72,7 @@ export default function App() {
             />
           </Routes>
         </BrowserRouter>
+        </SiteProvider>
       </SettingsProvider>
     </MotionConfig>
   );

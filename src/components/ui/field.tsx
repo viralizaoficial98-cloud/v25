@@ -2,7 +2,7 @@ import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type Selec
 import { cn } from '@/lib/cn';
 
 const base =
-  'w-full rounded-xl border bg-paper-muted/80 px-4 py-3 text-[15px] text-fg placeholder:text-fg/30 transition focus:outline-none focus:ring-2 focus:ring-gold/40 disabled:opacity-60';
+  'w-full rounded-xl border bg-paper px-4 py-3 text-[15px] text-fg placeholder:text-fg/40 transition focus:outline-none focus:ring-2 focus:ring-gold/40 disabled:opacity-60';
 
 interface FieldProps {
   label: ReactNode;
@@ -43,7 +43,7 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
     <input
       ref={ref}
       aria-invalid={invalid || undefined}
-      className={cn(base, invalid ? 'border-rose-400/70' : 'border-fg/10 focus:border-gold/60', className)}
+      className={cn(base, invalid ? 'border-rose-400/70' : 'border-fg/15 focus:border-gold/60', className)}
       {...props}
     />
   ),
@@ -55,7 +55,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
     <select
       ref={ref}
       aria-invalid={invalid || undefined}
-      className={cn(base, 'appearance-none pr-10', invalid ? 'border-rose-400/70' : 'border-fg/10 focus:border-gold/60', className)}
+      className={cn(base, 'appearance-none pr-10', invalid ? 'border-rose-400/70' : 'border-fg/15 focus:border-gold/60', className)}
       {...props}
     />
   ),
@@ -67,7 +67,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
     <textarea
       ref={ref}
       aria-invalid={invalid || undefined}
-      className={cn(base, 'min-h-[110px]', invalid ? 'border-rose-400/70' : 'border-fg/10 focus:border-gold/60', className)}
+      className={cn(base, 'min-h-[110px]', invalid ? 'border-rose-400/70' : 'border-fg/15 focus:border-gold/60', className)}
       {...props}
     />
   ),

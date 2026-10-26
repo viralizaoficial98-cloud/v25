@@ -87,3 +87,23 @@ export async function validateProofFile(file: File): Promise<{ ok: true; mime: (
   if (!mime) return { ok: false, error: 'Formato não aceite. Envie PDF, JPG ou PNG.' };
   return { ok: true, mime };
 }
+
+export const vipRequestSchema = z
+  .object({
+    fullName: z
+      .string()
+      .transform(normalizeName)
+      .refine((v) => v.length >= 3 && v.length <= 120, 'Indique o seu nome completo.')
+      .refine((v) => /\p{L}.*\s.*\p{L}/u.test(v), 'Indique nome e apelido.'),
+    email: z.string().trim().toLowerCase().max(254, 'Email demasiado longo.').regex(/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/, 'Indique um email válido.'),
+    phoneCountry: z.string().length(2),
+    phone: z.string().min(6, 'Indique o seu telefone.'),
+    participants: z.number().int().min(1, 'Indique pelo menos 1 participante.').max(100, 'Máximo 100 participantes por solicitação.'),
+    message: z.string().max(1500, 'Mensagem demasiado longa (máx. 1500 caracteres).'),
+    consent: z.literal(true, { error: 'É necessário o seu consentimento para continuar.' }),
+  })
+  .superRefine((v, ctx) => {
+    if (!normalizePhone(v.phone, v.phoneCountry as CountryCode)) {
+      ctx.addIssue({ code: 'custom', path: ['phone'], message: 'Número de telefone inválido para o país escolhido.' });
+    }
+  });

@@ -76,3 +76,11 @@ export function fromLuandaInput(v: string): string | null {
   if (!v) return null;
   return `${v.length === 16 ? `${v}:00` : v}+01:00`;
 }
+
+/** Data sem hora ("2019-12-14") → "14 de dezembro de 2019" (sem desvios de fuso). */
+export function formatDate(ymd: string | null | undefined): string {
+  if (!ymd) return '—';
+  const d = new Date(`${ymd.slice(0, 10)}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return '—';
+  return new Intl.DateTimeFormat('pt-PT', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+}

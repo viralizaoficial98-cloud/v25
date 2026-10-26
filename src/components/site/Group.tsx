@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Expand, UserRound } from 'lucide-react';
-import { SectionHeading } from '@/components/ui/misc';
+import { CmsHeading } from '@/components/ui/misc';
+import { useSite } from '@/hooks/useSite';
 import { OfficialPicture } from '@/components/ui/picture';
 import { fetchMedia, fetchMembers, mediaUrl } from '@/lib/api';
 import { OFFICIAL_PHOTOS, officialImage } from '@/lib/images';
@@ -31,11 +32,7 @@ export function Group() {
   return (
     <section id="grupo" className="section" aria-labelledby="grupo-titulo">
       <div className="container">
-        <SectionHeading
-          eyebrow="O grupo"
-          title={<span id="grupo-titulo">Vozes que se tornaram <span className="text-gold-metal">família</span></span>}
-          intro="Antigos e actuais integrantes reúnem-se para celebrar 25 anos de harmonia."
-        />
+        <CmsHeading id="grupo-titulo" s={useSite().content.group} />
 
         {/* Masonry responsivo com CSS columns (sem recortes) */}
         <div className="columns-1 gap-5 sm:columns-2 lg:columns-3 [&>*]:mb-5">

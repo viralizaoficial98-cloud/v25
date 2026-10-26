@@ -1,30 +1,28 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Hourglass } from 'lucide-react';
-import { EmptyState, SectionHeading, Spinner } from '@/components/ui/misc';
+import { CmsHeading, EmptyState, Spinner } from '@/components/ui/misc';
 import { fetchTimeline, mediaUrl } from '@/lib/api';
 import { useAsync } from '@/hooks/useAsync';
 import { cn } from '@/lib/cn';
+import { useSite } from '@/hooks/useSite';
 
 export function Timeline() {
   const { data = [], loading } = useAsync(fetchTimeline, []);
   const [active, setActive] = useState(0);
   const current = data[active];
+  const h = useSite().content.history;
 
   return (
     <section id="historia" className="section bg-gradient-to-b from-paper via-paper-soft to-paper" aria-labelledby="historia-titulo">
       <div className="container">
-        <SectionHeading
-          eyebrow="25 anos de história"
-          title={<span id="historia-titulo">Uma caminhada feita de <span className="text-gold-metal">vozes</span></span>}
-          intro="Os marcos que construíram o legado do Vibes – Grupo Vocal, contados por quem os viveu."
-        />
+        <CmsHeading id="historia-titulo" s={h} />
 
         {loading ? (
           <div className="flex justify-center"><Spinner /></div>
         ) : data.length === 0 ? (
           <EmptyState icon={<Hourglass className="h-8 w-8" />} title="A história está a ser reunida">
-            Estamos a recolher datas, fotografias e memórias junto de antigos e actuais integrantes. Os marcos serão publicados aqui em breve.
+            {h.empty_text}
           </EmptyState>
         ) : (
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">

@@ -1,8 +1,9 @@
 import * as A from '@radix-ui/react-accordion';
 import { ChevronDown } from 'lucide-react';
-import { SectionHeading, Spinner } from '@/components/ui/misc';
+import { CmsHeading, Spinner } from '@/components/ui/misc';
 import { fetchFaqs } from '@/lib/api';
 import { useAsync } from '@/hooks/useAsync';
+import { useSite } from '@/hooks/useSite';
 import type { Faq as FaqT } from '@/lib/types';
 
 /** Usado apenas se a API estiver indisponível (mesmo conteúdo do seed). */
@@ -27,7 +28,7 @@ export function Faq() {
   return (
     <section id="faq" className="section" aria-labelledby="faq-titulo">
       <div className="container max-w-3xl">
-        <SectionHeading eyebrow="Perguntas frequentes" title={<span id="faq-titulo">Tudo o que precisa de saber</span>} />
+        <CmsHeading id="faq-titulo" s={useSite().content.faq} />
         {loading ? (
           <div className="flex justify-center"><Spinner /></div>
         ) : (

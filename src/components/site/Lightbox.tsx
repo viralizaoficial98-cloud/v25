@@ -8,7 +8,7 @@ export interface LightboxItem {
   srcSet?: string;
   alt: string;
   caption?: string;
-  kind?: 'foto' | 'video';
+  kind?: 'foto' | 'video' | 'embed';
 }
 
 export function Lightbox({ items, index, onIndex }: { items: LightboxItem[]; index: number | null; onIndex: (i: number | null) => void }) {
@@ -34,7 +34,7 @@ export function Lightbox({ items, index, onIndex }: { items: LightboxItem[]; ind
   return (
     <D.Root open={open} onOpenChange={(v) => !v && onIndex(null)}>
       <D.Portal>
-        <D.Overlay className="fixed inset-0 z-50 bg-black/95" />
+        <D.Overlay className="fixed inset-0 z-50 bg-[#120f0c]/95" />
         <D.Content className="fixed inset-0 z-50 flex items-center justify-center p-4 focus:outline-none" aria-describedby={undefined}>
           <D.Title className="sr-only">{item?.alt ?? 'Galeria'}</D.Title>
           <AnimatePresence mode="wait">
@@ -47,13 +47,17 @@ export function Lightbox({ items, index, onIndex }: { items: LightboxItem[]; ind
                 transition={{ duration: 0.25 }}
                 className="flex max-h-full max-w-6xl flex-col items-center"
               >
-                {item.kind === 'video' ? (
+                {item.kind === 'embed' ? (
+                  <div className="aspect-video w-[min(92vw,1100px)] overflow-hidden rounded-xl bg-black">
+                    <iframe src={item.src} title={item.alt} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen className="h-full w-full" />
+                  </div>
+                ) : item.kind === 'video' ? (
                   <video src={item.src} controls autoPlay className="max-h-[80vh] max-w-full rounded-xl" />
                 ) : (
                   <img src={item.src} srcSet={item.srcSet} sizes="100vw" alt={item.alt} className="max-h-[80vh] max-w-full rounded-xl object-contain" />
                 )}
-                {item.caption && <figcaption className="mt-4 max-w-2xl text-center text-sm text-fg/70">{item.caption}</figcaption>}
-                <p className="mt-2 text-xs text-fg/40">
+                {item.caption && <figcaption className="mt-4 max-w-2xl text-center text-sm text-white/80">{item.caption}</figcaption>}
+                <p className="mt-2 text-xs text-white/50">
                   {(index ?? 0) + 1} / {items.length}
                 </p>
               </motion.figure>
@@ -61,15 +65,15 @@ export function Lightbox({ items, index, onIndex }: { items: LightboxItem[]; ind
           </AnimatePresence>
           {items.length > 1 && (
             <>
-              <button type="button" onClick={() => go(-1)} aria-label="Anterior" className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-fg/10 p-3 text-fg hover:bg-fg/20 md:left-6">
+              <button type="button" onClick={() => go(-1)} aria-label="Anterior" className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/25 md:left-6">
                 <ChevronLeft className="h-6 w-6" />
               </button>
-              <button type="button" onClick={() => go(1)} aria-label="Seguinte" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-fg/10 p-3 text-fg hover:bg-fg/20 md:right-6">
+              <button type="button" onClick={() => go(1)} aria-label="Seguinte" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/25 md:right-6">
                 <ChevronRight className="h-6 w-6" />
               </button>
             </>
           )}
-          <D.Close aria-label="Fechar" className="absolute right-4 top-4 rounded-full bg-fg/10 p-3 text-fg hover:bg-fg/20">
+          <D.Close aria-label="Fechar" className="absolute right-4 top-4 rounded-full bg-white/10 p-3 text-white hover:bg-white/25">
             <X className="h-6 w-6" />
           </D.Close>
         </D.Content>

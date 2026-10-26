@@ -4,15 +4,17 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Menu, Ticket, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { buttonVariants } from '@/components/ui/button';
+import { useSite } from '@/hooks/useSite';
+import type { SectionKey } from '@/lib/siteDefaults';
 
-export const NAV = [
-  { href: '#evento', label: 'O Evento' },
-  { href: '#historia', label: '25 Anos' },
-  { href: '#grupo', label: 'O Grupo' },
-  { href: '#informacoes', label: 'Informações' },
-  { href: '#ingressos', label: 'Ingressos' },
-  { href: '#memorias', label: 'Memórias' },
-  { href: '#faq', label: 'FAQ' },
+export const NAV: { href: string; label: string; section: SectionKey }[] = [
+  { href: '#evento', label: 'O Evento', section: 'about' },
+  { href: '#historia', label: '25 Anos', section: 'history' },
+  { href: '#grupo', label: 'O Grupo', section: 'group' },
+  { href: '#informacoes', label: 'Informações', section: 'event_info' },
+  { href: '#ingressos', label: 'Ingressos', section: 'tickets' },
+  { href: '#galeria', label: 'Galeria', section: 'event_gallery' },
+  { href: '#faq', label: 'FAQ', section: 'faq' },
 ];
 
 export function Logo({ className }: { className?: string }) {
@@ -30,6 +32,8 @@ export function Navbar() {
   const { pathname } = useLocation();
   const onHome = pathname === '/';
   const href = (h: string) => (onHome ? h : `/${h}`);
+  const { enabled } = useSite();
+  const nav = NAV.filter((n) => enabled(n.section));
 
   useEffect(() => {
     const on = () => setScrolled(window.scrollY > 24);
@@ -49,7 +53,7 @@ export function Navbar() {
     <header
       className={cn(
         'fixed inset-x-0 top-0 z-40 transition-all duration-500',
-        scrolled || !onHome ? 'border-b border-gold/10 bg-paper/85 backdrop-blur-xl' : 'bg-gradient-to-b from-paper/70 to-transparent',
+        scrolled || !onHome ? 'border-b border-fg/10 bg-paper/90 shadow-soft backdrop-blur-xl' : 'bg-paper/60 backdrop-blur-sm',
       )}
     >
       <a href="#conteudo" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:rounded focus:bg-gold focus:px-3 focus:py-2 focus:text-fg">
@@ -60,16 +64,16 @@ export function Navbar() {
           <Logo />
         </Link>
         <ul className="hidden items-center gap-7 lg:flex">
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <li key={n.href}>
-              <a href={href(n.href)} className="text-[13px] font-medium text-fg/70 transition hover:text-gold-light">
+              <a href={href(n.href)} className="text-[13px] font-medium text-fg/75 transition hover:text-gold-deep">
                 {n.label}
               </a>
             </li>
           ))}
         </ul>
         <div className="flex items-center gap-2">
-          <Link to="/consultar" className="hidden text-[13px] font-medium text-fg/70 hover:text-gold-light md:inline">
+          <Link to="/consultar" className="hidden text-[13px] font-medium text-fg/75 hover:text-gold-deep md:inline">
             Consultar pedido
           </Link>
           <a href={href('#ingressos')} className={cn(buttonVariants({ size: 'sm' }), 'hidden sm:inline-flex')}>
@@ -94,7 +98,7 @@ export function Navbar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 top-16 z-40 bg-paper/97 backdrop-blur-xl lg:hidden"
+            className="fixed inset-0 top-16 z-40 bg-paper backdrop-blur-xl lg:hidden"
           >
             <motion.ul
               className="container flex flex-col gap-1 pt-8"
@@ -102,7 +106,7 @@ export function Navbar() {
               animate="s"
               variants={{ s: { transition: { staggerChildren: 0.04 } } }}
             >
-              {[...NAV, { href: '/consultar', label: 'Consultar pedido' }].map((n) => (
+              {[...nav, { href: '/consultar', label: 'Consultar pedido' }].map((n) => (
                 <motion.li key={n.href} variants={{ h: { opacity: 0, x: -16 }, s: { opacity: 1, x: 0 } }}>
                   {n.href.startsWith('/') ? (
                     <Link to={n.href} onClick={() => setOpen(false)} className="block border-b border-fg/5 py-4 font-display text-3xl text-fg">
@@ -117,7 +121,7 @@ export function Navbar() {
               ))}
               <li className="pt-8">
                 <a href={href('#ingressos')} onClick={() => setOpen(false)} className={cn(buttonVariants({ size: 'lg' }), 'w-full')}>
-                  Garantir o meu ingresso
+                  Garante já o teu ingresso
                 </a>
               </li>
             </motion.ul>

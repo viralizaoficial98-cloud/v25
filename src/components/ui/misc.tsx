@@ -121,3 +121,19 @@ export function EmptyState({ icon, title, children, className }: { icon?: ReactN
     </div>
   );
 }
+
+/** Cabeçalho de secção a partir dos textos do CMS (título + destaque dourado + introdução). */
+export function CmsHeading({ id, s }: { id: string; s: { eyebrow: string; title: string; title_highlight?: string; intro?: string } }) {
+  return (
+    <SectionHeading
+      eyebrow={s.eyebrow}
+      title={
+        <span id={id}>
+          {s.title}
+          {s.title_highlight && <> <span className="text-gold-metal">{s.title_highlight}</span></>}
+        </span>
+      }
+      intro={s.intro || undefined}
+    />
+  );
+}

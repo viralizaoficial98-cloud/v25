@@ -59,3 +59,29 @@ export function tokenFromHash(hash: string): string | null {
   const m = /(?:^#|&)t=([^&]+)/.exec(hash);
   return m ? decodeURIComponent(m[1]) : null;
 }
+
+// ---------------------------------------------------------------- Solicitações VIP
+const VIP_KEY = 'v25.vip';
+
+export function saveVipAccess(code: string, token: string) {
+  try {
+    const list = (JSON.parse(localStorage.getItem(VIP_KEY) || '[]') as SavedOrder[]).filter((o) => o && o.code !== code);
+    list.unshift({ code, token, savedAt: new Date().toISOString() });
+    localStorage.setItem(VIP_KEY, JSON.stringify(list.slice(0, 5)));
+  } catch {
+    /* sem armazenamento: o cliente usa a ligação enviada por email */
+  }
+}
+
+export function vipTokenFor(code: string): string | null {
+  try {
+    const list = JSON.parse(localStorage.getItem(VIP_KEY) || '[]') as SavedOrder[];
+    return list.find((o) => o && o.code === code)?.token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function vipPath(code: string, token: string) {
+  return `/vip/${encodeURIComponent(code)}#t=${encodeURIComponent(token)}`;
+}

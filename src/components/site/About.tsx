@@ -1,14 +1,15 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import { OfficialPicture } from '@/components/ui/picture';
+import { CmsImage } from '@/components/ui/cmsImage';
 import { Reveal } from '@/components/ui/misc';
 import { useSettings } from '@/hooks/useSettings';
-
-const PILLARS = ['Música', 'Fé', 'Amizade', 'História'];
+import { useSite } from '@/hooks/useSite';
 
 export function About() {
   const { settings: s } = useSettings();
+  const a = useSite().content.about;
+  const PILLARS = a.pillars.filter(Boolean);
   const reduce = useReducedMotion();
-  const paragraphs = s.about_text.split(/\n{2,}/).filter(Boolean);
+  const paragraphs = (a.body || s.about_text).split(/\n{2,}/).filter(Boolean);
   const [lead, ...rest] = paragraphs;
 
   return (
@@ -16,17 +17,15 @@ export function About() {
       <div className="container grid gap-14 lg:grid-cols-12 lg:gap-10">
         <div className="lg:col-span-5">
           <Reveal>
-            <p className="eyebrow">Sobre o evento</p>
+            <p className="eyebrow">{a.eyebrow}</p>
             <h2 id="sobre-titulo" className="mt-4 text-5xl font-semibold leading-[1.02] md:text-6xl">
-              Muito mais do que <em className="text-gold-metal not-italic">um concerto</em>.
+              {a.title} <em className="text-gold-metal not-italic">{a.title_highlight}</em>
             </h2>
           </Reveal>
           <Reveal delay={0.15} className="mt-10 hidden lg:block">
             <div className="relative">
               <div aria-hidden className="absolute -left-4 -top-4 h-full w-full rounded-3xl border border-gold/25" />
-              <OfficialPicture
-                name="vibes-ao-vivo"
-                alt="Integrantes do Vibes – Grupo Vocal a cantar em conjunto"
+              <CmsImage path={a.image} fallback="vibes-ao-vivo" alt={a.image_alt}
                 sizes="(min-width: 1024px) 38vw, 100vw"
                 className="relative rounded-3xl"
                 imgClassName="object-contain"
@@ -62,13 +61,13 @@ export function About() {
                 transition={{ delay: 0.1 * i, duration: 0.7 }}
                 className="glass rounded-2xl px-4 py-5 text-center"
               >
-                <span className="font-display text-xl text-gold-light">{p}</span>
+                <span className="font-display text-xl text-gold-deep">{p}</span>
               </motion.li>
             ))}
           </ul>
 
           <Reveal className="mt-10 lg:hidden">
-            <OfficialPicture name="vibes-ao-vivo" alt="Integrantes do Vibes – Grupo Vocal a cantar em conjunto" className="rounded-3xl" imgClassName="object-contain" />
+            <CmsImage path={a.image} fallback="vibes-ao-vivo" alt={a.image_alt} className="rounded-3xl" imgClassName="object-contain" />
           </Reveal>
         </div>
       </div>

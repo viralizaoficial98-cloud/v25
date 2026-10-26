@@ -1,12 +1,17 @@
 import { Landmark, Smartphone } from 'lucide-react';
 import { CopyButton } from '@/components/ui/misc';
 import { formatKz } from '@/lib/format';
+import { cn } from '@/lib/cn';
+import type { PaymentMethod } from '@/lib/types';
 
 export function groupIban(iban: string) {
   return iban.replace(/\s+/g, '').replace(/(.{4})/g, '$1 ').trim();
 }
 
 interface Props {
+  method: PaymentMethod;
+  onMethod: (m: PaymentMethod) => void;
+  saving?: boolean;
   accountName: string;
   accountNumber: string;
   iban: string;
@@ -15,76 +20,86 @@ interface Props {
   reference: string;
 }
 
-/** Cartão premium com os dados oficiais de pagamento (vindos da base de dados). */
-export function BankCard({ accountName, accountNumber, iban, expressNumber, amount, reference }: Props) {
-  const missing = !iban && !accountNumber && !expressNumber;
+function Line({ label, value, copy, mono = true, accent }: { label: string; value: string; copy?: string; mono?: boolean; accent?: boolean }) {
   return (
-    <div className="relative overflow-hidden rounded-[1.75rem] border border-gold/40 bg-[linear-gradient(135deg,#2b1d13_0%,#120d09_45%,#1a130d_100%)] p-6 shadow-glow md:p-8">
-      <div aria-hidden className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-gold/15 blur-3xl" />
-      <div aria-hidden className="absolute inset-x-0 top-0 h-px bg-gold-metal" />
-      <div className="relative flex items-start justify-between gap-4">
-        <div>
-          <p className="eyebrow">Dados para pagamento</p>
-          <p className="mt-2 font-display text-2xl text-fg md:text-3xl">Transferência bancária</p>
-        </div>
-        <Landmark className="h-8 w-8 text-gold" aria-hidden />
+    <div className="flex flex-wrap items-end justify-between gap-3 border-b border-fg/10 pb-4 last:border-0 last:pb-0">
+      <div className="min-w-0">
+        <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fg-muted">{label}</dt>
+        <dd className={cn('mt-1 break-all text-lg text-fg', mono && 'font-mono tracking-wider', accent && 'font-semibold text-gold-deep')}>{value}</dd>
+      </div>
+      {copy && <CopyButton value={copy} label="Copiar" />}
+    </div>
+  );
+}
+
+/**
+ * Etapa 4 — dados oficiais de pagamento (vindos da base de dados, só mostrados
+ * na página do pedido) com escolha entre Transferência Bancária e Express.
+ */
+export function BankCard({ method, onMethod, saving, accountName, accountNumber, iban, expressNumber, amount, reference }: Props) {
+  const missing = method === 'express' ? !expressNumber : !iban && !accountNumber;
+  const tab = (m: PaymentMethod, label: string, Icon: typeof Landmark) => (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={method === m}
+      disabled={saving}
+      onClick={() => onMethod(m)}
+      className={cn(
+        'flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition',
+        method === m ? 'bg-paper text-fg shadow-soft ring-1 ring-gold/50' : 'text-fg-muted hover:text-fg',
+      )}
+    >
+      <Icon className="h-4 w-4 text-gold" aria-hidden /> {label}
+    </button>
+  );
+
+  return (
+    <div className="relative overflow-hidden rounded-[1.75rem] border border-gold/40 bg-paper p-6 shadow-card md:p-8">
+      <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-gold-metal" />
+      <p className="eyebrow">Etapa 4 · Pagamento</p>
+      <h2 className="mt-2 font-display text-3xl font-semibold text-fg">Escolha como pagar</h2>
+
+      <div role="tablist" aria-label="Método de pagamento" className="mt-6 flex gap-1 rounded-2xl bg-paper-muted p-1">
+        {tab('transferencia', 'Transferência Bancária', Landmark)}
+        {tab('express', 'Transferência Express', Smartphone)}
       </div>
 
-      {missing ? (
-        <p className="relative mt-6 text-sm text-amber-800">Os dados bancários ainda não foram configurados pela organização. Contacte a equipa antes de transferir.</p>
-      ) : (
-        <dl className="relative mt-7 space-y-5">
-          {accountName && (
-            <div>
-              <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fg/45">Nome da conta</dt>
-              <dd className="mt-1 font-semibold text-fg">{accountName}</dd>
-            </div>
-          )}
-          {accountNumber && (
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fg/45">Número da conta</dt>
-                <dd className="mt-1 font-mono text-lg tracking-wider text-fg">{accountNumber}</dd>
-              </div>
-              <CopyButton value={accountNumber} label="Copiar conta" />
-            </div>
-          )}
-          {iban && (
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div className="min-w-0">
-                <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fg/45">IBAN</dt>
-                <dd className="mt-1 break-all font-mono text-lg tracking-wider text-gold-light">{groupIban(iban)}</dd>
-              </div>
-              <CopyButton value={iban.replace(/\s+/g, '')} label="Copiar IBAN" />
-            </div>
-          )}
-          {expressNumber && (
-            <div className="flex flex-wrap items-end justify-between gap-3 border-t border-fg/10 pt-5">
-              <div>
-                <dt className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-fg/45">
-                  <Smartphone className="h-3.5 w-3.5" aria-hidden /> Transferência Express
-                </dt>
-                <dd className="mt-1 font-mono text-lg tracking-wider text-fg">{expressNumber}</dd>
-              </div>
-              <CopyButton value={expressNumber.replace(/\s+/g, '')} label="Copiar número Express" />
-            </div>
-          )}
-        </dl>
-      )}
+      <div role="tabpanel" className="mt-6">
+        {missing ? (
+          <p className="text-sm text-amber-800">Os dados para este método ainda não foram configurados pela organização. Contacte a equipa antes de pagar.</p>
+        ) : (
+          <dl className="space-y-4">
+            {accountName && <Line label="Titular" value={accountName} mono={false} />}
+            {method === 'transferencia' ? (
+              <>
+                {accountNumber && <Line label="Conta" value={accountNumber} copy={accountNumber.replace(/\s+/g, '')} />}
+                {iban && <Line label="IBAN" value={groupIban(iban)} copy={iban.replace(/\s+/g, '')} accent />}
+              </>
+            ) : (
+              <Line label="Número Express" value={expressNumber} copy={expressNumber.replace(/\s+/g, '')} accent />
+            )}
+          </dl>
+        )}
+      </div>
 
-      <div className="relative mt-7 grid gap-4 rounded-2xl bg-black/30 p-4 ring-1 ring-gold/20 sm:grid-cols-2">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fg/45">Valor a transferir</p>
-          <p className="mt-1 font-display text-3xl text-gold-metal">{formatKz(amount)}</p>
+      <div className="mt-7 grid gap-4 rounded-2xl bg-gold-soft p-5 ring-1 ring-gold/30 sm:grid-cols-2">
+        <div className="flex items-end justify-between gap-2">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fg-muted">Valor exacto a pagar</p>
+            <p className="mt-1 font-display text-3xl font-semibold text-gold-metal">{formatKz(amount)}</p>
+          </div>
+          <CopyButton value={String(amount)} label="Copiar" />
         </div>
         <div className="flex items-end justify-between gap-2">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fg/45">Descritivo / referência</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fg-muted">Descritivo / referência</p>
             <p className="mt-1 font-mono text-lg font-bold tracking-wider text-fg">{reference}</p>
           </div>
           <CopyButton value={reference} label="Copiar" />
         </div>
       </div>
+      <p className="mt-4 text-xs text-fg-muted">Indique o número do pedido no descritivo da transferência para facilitar a validação.</p>
     </div>
   );
 }

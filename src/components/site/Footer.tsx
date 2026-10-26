@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Mail, MapPin, MessageCircle, Music2, Phone, Youtube } from 'lucide-react';
 import { useSettings } from '@/hooks/useSettings';
+import { useSite } from '@/hooks/useSite';
 import { formatEventDate, formatEventTime } from '@/lib/format';
 import type { SocialNetwork } from '@/lib/types';
 import { Logo } from './Navbar';
@@ -18,12 +19,15 @@ export function Footer() {
   const { settings: s } = useSettings();
   const socials = (Object.entries(s.socials ?? {}) as [SocialNetwork, string][]).filter(([k, v]) => SOCIAL[k] && /^https?:\/\//.test(v ?? ''));
   const year = new Date().getFullYear();
+  const f = useSite().content.footer;
+  const closing = f.closing_message || s.closing_message;
+  const base = import.meta.env.BASE_URL;
 
   return (
-    <footer className="relative border-t border-gold/10 bg-paper pt-20">
+    <footer className="relative border-t border-gold/10 bg-paper-soft pt-20">
       <div className="container">
         <p className="mx-auto max-w-3xl text-center font-display text-3xl leading-tight text-fg md:text-5xl">
-          {s.closing_message.split('. ').map((part, i, arr) => (
+          {closing.split('. ').map((part, i, arr) => (
             <span key={i} className={i === arr.length - 1 ? 'text-gold-metal' : undefined}>
               {part}
               {i < arr.length - 1 ? '. ' : ''}
@@ -34,22 +38,22 @@ export function Footer() {
         <div className="grid gap-10 py-14 md:grid-cols-3">
           <div>
             <Logo />
-            <p className="mt-4 max-w-xs text-sm text-fg/55">{s.subtitle}</p>
+            <p className="mt-4 max-w-xs text-sm text-fg-muted">{f.tagline || s.subtitle}</p>
             <p className="mt-2 text-sm text-fg/40">{s.group_name}</p>
           </div>
           <div className="space-y-3 text-sm text-fg/65">
             <p className="eyebrow mb-4">Informações</p>
             <p>{formatEventDate(s.starts_at)} · {formatEventTime(s.starts_at)}</p>
-            <a href={s.maps_url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 hover:text-gold-light">
+            <a href={s.maps_url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 hover:text-gold-deep">
               <MapPin className="mt-0.5 h-4 w-4 text-gold" aria-hidden /> {s.venue}, {s.address}
             </a>
             {s.contact_email && (
-              <a href={`mailto:${s.contact_email}`} className="flex items-center gap-2 hover:text-gold-light">
+              <a href={`mailto:${s.contact_email}`} className="flex items-center gap-2 hover:text-gold-deep">
                 <Mail className="h-4 w-4 text-gold" aria-hidden /> {s.contact_email}
               </a>
             )}
             {s.contact_phone && (
-              <a href={`tel:${s.contact_phone.replace(/\s/g, '')}`} className="flex items-center gap-2 hover:text-gold-light">
+              <a href={`tel:${s.contact_phone.replace(/\s/g, '')}`} className="flex items-center gap-2 hover:text-gold-deep">
                 <Phone className="h-4 w-4 text-gold" aria-hidden /> {s.contact_phone}
               </a>
             )}
@@ -62,7 +66,7 @@ export function Footer() {
                   const S = SOCIAL[k];
                   return (
                     <li key={k}>
-                      <a href={url} target="_blank" rel="noopener noreferrer" aria-label={S.label} className="flex h-11 w-11 items-center justify-center rounded-full border border-gold/25 text-gold-light transition hover:bg-gold/10">
+                      <a href={url} target="_blank" rel="noopener noreferrer" aria-label={S.label} className="flex h-11 w-11 items-center justify-center rounded-full border border-gold/25 text-gold-deep transition hover:bg-gold/10">
                         <S.icon className="h-5 w-5" aria-hidden />
                       </a>
                     </li>
@@ -73,13 +77,23 @@ export function Footer() {
               <p className="text-sm text-fg/40">As redes sociais oficiais serão anunciadas em breve.</p>
             )}
             <ul className="mt-6 space-y-2 text-sm">
-              <li><Link to="/consultar" className="text-fg/65 hover:text-gold-light">Consultar o meu pedido</Link></li>
-              <li><Link to="/privacidade" className="text-fg/65 hover:text-gold-light">Política de privacidade</Link></li>
-              <li><Link to="/termos" className="text-fg/65 hover:text-gold-light">Termos e condições</Link></li>
+              <li><Link to="/consultar" className="text-fg/65 hover:text-gold-deep">Consultar o meu pedido</Link></li>
+              <li><Link to="/privacidade" className="text-fg/65 hover:text-gold-deep">Política de privacidade</Link></li>
+              <li><Link to="/termos" className="text-fg/65 hover:text-gold-deep">Termos e condições</Link></li>
             </ul>
           </div>
         </div>
-        <div className="flex flex-col gap-2 border-t border-fg/5 py-6 text-xs text-fg/40 md:flex-row md:justify-between">
+        {f.show_partner_logo && (
+          <div className="flex flex-col items-center gap-3 border-t border-fg/10 py-8 sm:flex-row sm:justify-center sm:gap-5">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-fg-muted">{f.partner_label}</span>
+            {/* Identificação institucional da organização — discreta, não substitui a identidade V25 */}
+            <picture>
+              <source type="image/webp" srcSet={`${base}images/renew-logo-480.webp 480w, ${base}images/renew-logo-960.webp 960w`} sizes="180px" />
+              <img src={`${base}images/renew-logo-480.png`} alt="Renew — Criando momentos épicos para si" width={180} height={50} loading="lazy" decoding="async" className="h-auto w-[150px] sm:w-[180px]" />
+            </picture>
+          </div>
+        )}
+        <div className="flex flex-col gap-2 border-t border-fg/10 py-6 text-xs text-fg-muted md:flex-row md:justify-between">
           <p>{s.copyright_text || `© ${year} ${s.group_name}. Todos os direitos reservados.`}</p>
           {s.credits_text && <p>{s.credits_text}</p>}
         </div>

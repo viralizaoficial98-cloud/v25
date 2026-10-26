@@ -18,6 +18,11 @@ function mockApi(settings: Partial<typeof DEFAULT_SETTINGS>, ticketTypes: unknow
 const TYPE = {
   id: '8b7c6a1e-1111-4a2b-9c3d-123456789abc', name: 'Normal', lot_label: '1.º Lote', description: '', price_kz: 15000,
   available: 8, quantity_total: 10, max_per_order: 4, max_per_customer: 6, persons_per_ticket: 1, on_sale: true, sales_start: null, sales_end: null,
+  sale_mode: 'directo', benefits: ['Acesso ao evento'], badge: '', stock_defined: true,
+};
+const VIP = {
+  ...TYPE, id: '8b7c6a1e-2222-4a2b-9c3d-123456789abc', name: 'VIP', price_kz: null, sale_mode: 'consulta', on_sale: false,
+  available: 0, quantity_total: 0, stock_defined: false, badge: 'Por consulta', benefits: ['Lugar reservado'],
 };
 
 afterEach(() => vi.unstubAllGlobals());
@@ -30,13 +35,29 @@ describe('secção de ingressos (dados da API)', () => {
     expect(screen.queryByText(/comprar ingresso/i)).not.toBeInTheDocument();
   });
 
-  it('vendas abertas: mostra preço em Kz, disponibilidade e botões de compra/reserva', async () => {
+  it('vendas abertas: mostra preço em Kz, benefícios, disponibilidade e botão de compra', async () => {
     mockApi({ sales_open: true }, [TYPE]);
     render(<SettingsProvider><MemoryRouter><Tickets /></MemoryRouter></SettingsProvider>);
     expect(await screen.findByText('15 000 Kz')).toBeInTheDocument();
-    expect(screen.getByText('8 de 10')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /comprar ingresso/i })).toHaveAttribute('href', `/checkout?tipo=${TYPE.id}&modo=compra`);
-    expect(screen.getByRole('link', { name: /reservar lugar/i })).toHaveAttribute('href', `/checkout?tipo=${TYPE.id}&modo=reserva`);
+    expect(screen.getByText('8 de 10 disponíveis')).toBeInTheDocument();
+    expect(screen.getByText('Acesso ao evento')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /comprar ingresso/i })).toHaveAttribute('href', `/checkout?tipo=${TYPE.id}`);
+  });
+
+  it('VIP por consulta: sem preço público, sem compra directa, botão SOLICITAR ACESSO VIP', async () => {
+    mockApi({ sales_open: true }, [TYPE, VIP]);
+    render(<SettingsProvider><MemoryRouter><Tickets /></MemoryRouter></SettingsProvider>);
+    expect(await screen.findByText('Por consulta', { selector: 'p' })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /comprar ingresso/i })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: /solicitar acesso vip/i })).toBeInTheDocument();
+    expect(screen.getByText(/depende da aprovação da organização/i)).toBeInTheDocument();
+  });
+
+  it('stock ainda não definido: “Disponibilidade a anunciar” sem botão de compra', async () => {
+    mockApi({ sales_open: true }, [{ ...TYPE, stock_defined: false, available: 0, quantity_total: 0, on_sale: false }]);
+    render(<SettingsProvider><MemoryRouter><Tickets /></MemoryRouter></SettingsProvider>);
+    expect(await screen.findAllByText('Disponibilidade a anunciar')).not.toHaveLength(0);
+    expect(screen.queryByRole('link', { name: /comprar ingresso/i })).not.toBeInTheDocument();
   });
 
   it('API indisponível: mostra erro em vez de simular dados', async () => {

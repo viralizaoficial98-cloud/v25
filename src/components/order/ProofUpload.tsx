@@ -7,8 +7,9 @@ import { errorMessage } from '@/lib/errors';
 import { formatBytes } from '@/lib/format';
 import { validateProofFile } from '@/lib/validation';
 import { cn } from '@/lib/cn';
+import type { PaymentMethod } from '@/lib/types';
 
-export function ProofUpload({ code, token, onUploaded }: { code: string; token: string; onUploaded: () => void }) {
+export function ProofUpload({ code, token, method, onUploaded }: { code: string; token: string; method?: PaymentMethod; onUploaded: () => void }) {
   const input = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +38,7 @@ export function ProofUpload({ code, token, onUploaded }: { code: string; token: 
         setError(v.error);
         return;
       }
-      await uploadProof(code, token, file);
+      await uploadProof(code, token, file, method);
       setFile(null);
       onUploaded();
     } catch (e) {
@@ -48,10 +49,10 @@ export function ProofUpload({ code, token, onUploaded }: { code: string; token: 
   };
 
   return (
-    <div className="rounded-[1.75rem] border border-fg/10 bg-paper-soft/70 p-6 md:p-8">
-      <p className="eyebrow">Passo seguinte</p>
+    <div className="rounded-[1.75rem] border border-fg/10 bg-paper p-6 shadow-soft md:p-8">
+      <p className="eyebrow">Depois de pagar</p>
       <h3 className="mt-2 text-3xl font-semibold">Carregar comprovativo</h3>
-      <p className="mt-2 text-sm text-fg/60">Depois de fazer a transferência, envie o comprovativo em PDF, JPG ou PNG (máx. 5 MB).</p>
+      <p className="mt-2 text-sm text-fg-muted">Depois de fazer a transferência, envie o comprovativo em PDF, JPG ou PNG (máx. 5 MB).</p>
 
       <div
         onDragOver={(e) => {
@@ -66,7 +67,7 @@ export function ProofUpload({ code, token, onUploaded }: { code: string; token: 
         }}
         className={cn(
           'mt-6 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition',
-          drag ? 'border-gold bg-gold/10' : 'border-gold/25 bg-black/20',
+          drag ? 'border-gold bg-gold/10' : 'border-gold/30 bg-paper-soft',
         )}
       >
         <FileUp className="h-9 w-9 text-gold" aria-hidden />

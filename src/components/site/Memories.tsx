@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Camera, Play } from 'lucide-react';
-import { Alert, EmptyState, SectionHeading, Spinner } from '@/components/ui/misc';
+import { Alert, CmsHeading, EmptyState, Spinner } from '@/components/ui/misc';
 import { Button } from '@/components/ui/button';
 import { fetchMedia, mediaUrl } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 import type { MediaItem } from '@/lib/types';
 import { Lightbox, type LightboxItem } from './Lightbox';
+import { useSite } from '@/hooks/useSite';
 
 const PAGE = 12;
 
@@ -73,11 +74,7 @@ export function Memories() {
   return (
     <section id="memorias" className="section" aria-labelledby="memorias-titulo">
       <div className="container">
-        <SectionHeading
-          eyebrow="Memórias e galeria"
-          title={<span id="memorias-titulo">Momentos que <span className="text-gold-metal">ficam</span></span>}
-          intro="Fotografias e vídeos de 25 anos de palco, ensaios e amizade."
-        />
+        <CmsHeading id="memorias-titulo" s={useSite().content.memories} />
 
         {error ? (
           <Alert tone="bad" title="Não foi possível carregar a galeria" className="mx-auto max-w-xl">{errorMessage(error)}</Alert>
