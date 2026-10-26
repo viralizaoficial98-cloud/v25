@@ -34,7 +34,7 @@ export const registrationSchema = z
     ticketTypeId: z.string().uuid('Escolha uma categoria de ingresso.'),
     quantity: z.number().int().min(1, 'Mínimo 1 ingresso.'),
     guestsTotal: z.number().int().min(1),
-    consent: z.literal(true, { errorMap: () => ({ message: 'É necessário o seu consentimento para continuar.' }) }),
+    consent: z.literal(true, { error: 'É necessário o seu consentimento para continuar.' }),
   })
   .superRefine((v, ctx) => {
     if (!normalizePhone(v.phone, v.phoneCountry as CountryCode)) {
