@@ -18,7 +18,7 @@ final class MediaService
 {
     private const MAX_IMAGE = 15 * 1024 * 1024;
     private const MAX_VIDEO = 50 * 1024 * 1024;
-    private const FOLDERS = ['memorias', 'grupo', 'historia', 'integrantes'];
+    private const FOLDERS = ['memorias', 'grupo', 'historia', 'integrantes', 'site', 'galeria'];
 
     public static function url(?string $path): ?string
     {
@@ -95,7 +95,7 @@ final class MediaService
 
     public static function deleteFile(?string $rel): void
     {
-        if (!$rel || !preg_match('#^[a-z]+/[0-9a-f-]{36}\.(webp|jpg|png|mp4|webm)$#', $rel)) {
+        if (!$rel || !preg_match('#^[a-z]+/[0-9a-f-]{36}(-t)?\.(webp|jpg|png|mp4|webm)$#', $rel)) {
             return;
         }
         $base = realpath(Config::mediaPath());

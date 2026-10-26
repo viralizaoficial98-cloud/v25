@@ -177,6 +177,47 @@ final class Templates
                 $body = $hi . '<p>Foi criada uma conta para si no painel de gestão do V25 — O Legado. Defina a sua palavra-passe (ligação válida durante 72 horas).</p>' . self::button($link, 'Definir palavra-passe');
                 $text = "Convite para o painel V25. Defina a palavra-passe: $link";
                 break;
+            case 'vip_recebido':
+                $subject = 'Recebemos a sua solicitação VIP — ' . ($c['request_code'] ?? '');
+                $title = 'Solicitação de acesso VIP recebida';
+                $body = $hi . '<p>Obrigado pelo interesse em viver o <strong>' . self::e($ev['name']) . '</strong> na modalidade VIP.</p>'
+                    . '<p>A organização vai analisar o seu pedido (<strong>' . self::e($c['request_code'] ?? '') . '</strong>, ' . self::e($c['participants'] ?? '') . ' participante(s)) e enviar-lhe uma proposta com as condições, o valor e a disponibilidade.</p>'
+                    . '<p style="color:#e8cf8e">As condições VIP dependem de aprovação da organização. Nenhum pagamento é necessário até aceitar uma proposta.</p>'
+                    . ($link ? self::button($link, 'Acompanhar a solicitação') : '');
+                $text = 'Solicitação VIP ' . ($c['request_code'] ?? '') . " recebida. Acompanhe em: $link";
+                break;
+            case 'vip_nova_admin':
+                $subject = 'Nova solicitação VIP — ' . ($c['request_code'] ?? '');
+                $title = 'Nova solicitação VIP';
+                $body = '<p>Foi recebida uma nova solicitação de acesso VIP.</p><table role="presentation" width="100%">'
+                    . self::row('Código', self::e($c['request_code'] ?? '')) . self::row('Nome', self::e($c['full_name'] ?? ''))
+                    . self::row('Email', self::e($c['vip_email'] ?? '')) . self::row('Telefone', self::e($c['vip_phone'] ?? ''))
+                    . self::row('Participantes', self::e($c['participants'] ?? '')) . '</table>'
+                    . (!empty($c['vip_message']) ? '<p><strong>Mensagem:</strong> ' . nl2br(self::e($c['vip_message'])) . '</p>' : '')
+                    . self::button((string) ($c['admin_link'] ?? ''), 'Abrir no painel');
+                $text = 'Nova solicitação VIP ' . ($c['request_code'] ?? '') . ' de ' . ($c['full_name'] ?? '');
+                break;
+            case 'vip_proposta':
+                $p = $c['proposal'] ?? [];
+                $subject = 'Proposta VIP — ' . ($c['request_code'] ?? '');
+                $title = 'A sua proposta VIP';
+                $body = $hi . '<p>A organização preparou uma proposta para a sua solicitação VIP <strong>' . self::e($c['request_code'] ?? '') . '</strong>.</p>'
+                    . '<table role="presentation" width="100%" style="border-collapse:collapse;margin:12px 0;border-top:1px solid #3a2c1c;border-bottom:1px solid #3a2c1c">'
+                    . self::row('Ingressos VIP', self::e($p['tickets'] ?? '')) . self::row('Valor total', self::e(self::kz($p['total_kz'] ?? null)))
+                    . self::row('Válida até', self::e(self::luanda($p['valid_until'] ?? null))) . '</table>'
+                    . '<p><strong>Condições:</strong><br>' . nl2br(self::e($p['conditions'] ?? '')) . '</p>'
+                    . ($link ? self::button($link, 'Ver e aceitar a proposta') : '')
+                    . '<p style="font-size:13px;color:#a8977c">Ao aceitar, é criado um pedido de pagamento com o valor indicado. O ingresso VIP é emitido após a confirmação do pagamento.</p>';
+                $text = 'Proposta VIP ' . ($c['request_code'] ?? '') . ': ' . self::kz($p['total_kz'] ?? null) . ". Ver e aceitar: $link";
+                break;
+            case 'vip_rejeitado':
+                $subject = 'Solicitação VIP — ' . ($c['request_code'] ?? '');
+                $title = 'Sobre a sua solicitação VIP';
+                $body = $hi . '<p>Lamentamos, mas não foi possível atender à solicitação VIP <strong>' . self::e($c['request_code'] ?? '') . '</strong>.</p>'
+                    . (!empty($c['motivo']) ? '<p><strong>Motivo:</strong> ' . self::e($c['motivo']) . '</p>' : '')
+                    . '<p>Pode garantir o seu lugar nas categorias Normal ou Premium no site do evento.</p>';
+                $text = 'Solicitação VIP ' . ($c['request_code'] ?? '') . ' não atendida. ' . ($c['motivo'] ?? '');
+                break;
             case 'teste_smtp':
                 $subject = 'Teste de envio — V25 O Legado';
                 $title = 'O envio de emails está a funcionar';

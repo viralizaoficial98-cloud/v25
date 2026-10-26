@@ -40,21 +40,53 @@ final class ReportService
         return "\xEF\xBB\xBF" . implode("\r\n", $lines);
     }
 
-    public static function orders(): Response
+    /** Filtros comuns: estado, categoria, origem (checkout/vip) e intervalo de datas (AAAA-MM-DD). */
+    public static function filters(array $q): array
     {
-        $rows = Db::all('SELECT o.order_code, o.status, r.full_name, r.email, r.phone, c.name AS categoria, c.lot_label, i.quantity, o.guests_total,
-                i.unit_price_kz, o.total_kz, p.reference, p.method, p.amount_kz, o.created_at, o.reviewed_at, o.rejection_reason, o.cancel_reason
+        $w = ['1=1'];
+        $p = [];
+        if (!empty($q['status']) && preg_match('/^[a-z_]+$/', (string) $q['status'])) {
+            $w[] = 'o.status = :st';
+            $p['st'] = $q['status'];
+        }
+        if (!empty($q['category']) && \App\Support\Util::isUuid($q['category'])) {
+            $w[] = 'i.category_id = :cat';
+            $p['cat'] = $q['category'];
+        }
+        if (in_array($q['source'] ?? '', ['checkout', 'vip'], true)) {
+            $w[] = 'o.source = :src';
+            $p['src'] = $q['source'];
+        }
+        foreach (['from' => '>=', 'to' => '<'] as $k => $op) {
+            if (!empty($q[$k]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $q[$k])) {
+                // datas do formulário em hora de Luanda (UTC+1)
+                $d = new \DateTimeImmutable($q[$k] . ' 00:00:00', new \DateTimeZone('Africa/Luanda'));
+                if ($k === 'to') {
+                    $d = $d->modify('+1 day');
+                }
+                $w[] = "o.created_at $op :$k";
+                $p[$k] = $d->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+            }
+        }
+        return [implode(' AND ', $w), $p];
+    }
+
+    public static function orders(array $q = []): Response
+    {
+        [$where, $params] = self::filters($q);
+        $rows = Db::all("SELECT o.order_code, o.status, o.source, r.full_name, r.email, r.phone, c.name AS categoria, c.lot_label, i.quantity, o.guests_total,
+                i.unit_price_kz, o.total_kz, p.reference, COALESCE(p.method, o.payment_method) AS method, p.amount_kz, o.created_at, o.reviewed_at, o.rejection_reason, o.cancel_reason
             FROM orders o JOIN registrations r ON r.id = o.registration_id JOIN order_items i ON i.order_id = o.id
-            JOIN ticket_categories c ON c.id = i.category_id LEFT JOIN payments p ON p.order_id = o.id ORDER BY o.created_at');
+            JOIN ticket_categories c ON c.id = i.category_id LEFT JOIN payments p ON p.order_id = o.id WHERE $where ORDER BY o.created_at", $params);
         foreach ($rows as &$r) {
             $r['estado'] = self::LABELS[$r['status']] ?? $r['status'];
             $r['categoria'] .= $r['lot_label'] ? ' (' . $r['lot_label'] . ')' : '';
             $r['criado'] = self::luanda($r['created_at']);
             $r['revisto'] = self::luanda($r['reviewed_at']);
         }
-        Audit::log('relatorio.exportado', 'report', 'pedidos', ['linhas' => count($rows)]);
+        Audit::log('relatorio.exportado', 'report', 'pedidos', ['linhas' => count($rows), 'filtros' => array_intersect_key($q, array_flip(['status', 'category', 'source', 'from', 'to']))]);
         return Response::file(self::csv($rows, [
-            'order_code' => 'Pedido', 'estado' => 'Estado', 'full_name' => 'Nome', 'email' => 'Email', 'phone' => 'Telefone', 'categoria' => 'Categoria',
+            'order_code' => 'Pedido', 'estado' => 'Estado', 'source' => 'Origem', 'full_name' => 'Nome', 'email' => 'Email', 'phone' => 'Telefone', 'categoria' => 'Categoria',
             'quantity' => 'Quantidade', 'guests_total' => 'Convidados', 'unit_price_kz' => 'Preço unitário (Kz)', 'total_kz' => 'Total (Kz)',
             'reference' => 'Referência bancária', 'method' => 'Método', 'amount_kz' => 'Valor confirmado (Kz)', 'criado' => 'Criado', 'revisto' => 'Revisto',
             'rejection_reason' => 'Motivo rejeição', 'cancel_reason' => 'Motivo cancelamento',
@@ -88,12 +120,31 @@ final class ReportService
             'text/csv; charset=utf-8', 'v25-checkins-' . gmdate('Y-m-d-Hi') . '.csv');
     }
 
-    /** Dados para o relatório PDF gerado no painel. */
-    public static function summary(): array
+    public static function vip(): Response
     {
-        $rows = Db::all('SELECT o.order_code, o.status, r.full_name, c.name AS categoria, i.quantity, o.total_kz, p.reference
+        $rows = Db::all("SELECT v.request_code, v.status, v.full_name, v.email, v.phone, v.participants, v.message, v.created_at,
+                p.tickets, p.total_kz, p.status AS proposta, o.order_code, o.status AS pedido
+            FROM vip_requests v
+            LEFT JOIN vip_proposals p ON p.id = (SELECT id FROM vip_proposals WHERE request_id = v.id AND status <> 'substituida' ORDER BY created_at DESC, id DESC LIMIT 1)
+            LEFT JOIN orders o ON o.id = p.order_id ORDER BY v.created_at");
+        foreach ($rows as &$r) {
+            $r['criado'] = self::luanda($r['created_at']);
+        }
+        Audit::log('relatorio.exportado', 'report', 'vip', ['linhas' => count($rows)]);
+        return Response::file(self::csv($rows, [
+            'request_code' => 'Solicitação', 'status' => 'Estado', 'full_name' => 'Nome', 'email' => 'Email', 'phone' => 'Telefone',
+            'participants' => 'Participantes', 'message' => 'Mensagem', 'criado' => 'Criado', 'tickets' => 'Ingressos propostos',
+            'total_kz' => 'Valor proposto (Kz)', 'proposta' => 'Estado da proposta', 'order_code' => 'Pedido', 'pedido' => 'Estado do pedido',
+        ]), 'text/csv; charset=utf-8', 'v25-vip-' . gmdate('Y-m-d-Hi') . '.csv');
+    }
+
+    /** Dados para o relatório PDF gerado no painel (com os mesmos filtros do CSV). */
+    public static function summary(array $q = []): array
+    {
+        [$where, $params] = self::filters($q);
+        $rows = Db::all("SELECT o.order_code, o.status, r.full_name, c.name AS categoria, i.quantity, o.total_kz, p.reference
             FROM orders o JOIN registrations r ON r.id = o.registration_id JOIN order_items i ON i.order_id = o.id
-            JOIN ticket_categories c ON c.id = i.category_id LEFT JOIN payments p ON p.order_id = o.id ORDER BY o.created_at');
+            JOIN ticket_categories c ON c.id = i.category_id LEFT JOIN payments p ON p.order_id = o.id WHERE $where ORDER BY o.created_at", $params);
         return [
             'stats' => AdminQueryService::dashboard(),
             'orders' => array_map(fn ($r) => [

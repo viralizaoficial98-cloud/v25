@@ -56,7 +56,7 @@ final class MailQueue
         $ids = array_column(Db::all("SELECT id FROM email_outbox WHERE status = 'pendente' AND attempts < :m ORDER BY id LIMIT :l", ['m' => self::MAX_ATTEMPTS, 'l' => $limit]), 'id');
         $sent = 0;
         $failed = 0;
-        $settings = SettingsService::public();
+        $settings = SettingsService::full();
         $site = Config::appUrl();
         foreach ($ids as $id) {
             // Reclamação atómica: evita envio duplicado se dois processos correrem ao mesmo tempo
@@ -102,6 +102,13 @@ final class MailQueue
             'payment' => ['account_name' => $s['bank_account_name'], 'account_number' => $s['bank_account_number'], 'iban' => $s['bank_iban'], 'express_number' => $s['express_number']],
             'tickets' => [],
         ] + $payload;
+        if (!empty($payload['vip_request_id'])) {
+            $vip = VipService::emailContext((string) $payload['vip_request_id'], $site);
+            if ($row['template'] === 'vip_nova_admin') {
+                unset($vip['link']); // a equipa usa o painel; a ligação privada é só do cliente
+            }
+            return $vip + $ctx;
+        }
         if (in_array($row['template'], ['recuperar_senha', 'convite_equipa'], true)) {
             $ctx['link'] = $site . '/admin/redefinir#token=' . rawurlencode((string) ($payload['token'] ?? ''));
             $ctx['full_name'] = (string) Db::value('SELECT full_name FROM users WHERE id = :id', ['id' => $row['user_id']]);

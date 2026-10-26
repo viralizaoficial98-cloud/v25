@@ -154,9 +154,18 @@ test('público: configurações oficiais, sem ingressos publicados, FAQ', async 
   assert.equal(s.data.event_name, 'V25 — O LEGADO');
   assert.equal(s.data.starts_at, '2026-12-20T15:00:00Z'); // 16h00 em Luanda
   assert.equal(s.data.venue, 'Hotel Brisa Tropical');
-  assert.equal(s.data.bank_iban, 'AO06004000004006599510166');
+  assert.equal('bank_iban' in s.data, false, 'dados bancários só na etapa de pagamento');
+  assert.equal('express_number' in s.data, false);
   assert.equal(s.data.sales_open, false);
-  assert.deepEqual((await c.get('/public/ticket-types')).data, []);
+  // Categorias oficiais da migração 003: Normal 12 500, Premium 25 000, VIP por consulta
+  const types = (await c.get('/public/ticket-types')).data;
+  const byName = Object.fromEntries(types.map((t) => [t.name, t]));
+  assert.equal(byName.Normal.price_kz, 12500);
+  assert.equal(byName.Premium.price_kz, 25000);
+  assert.equal(byName.VIP.price_kz, null);
+  assert.equal(byName.VIP.sale_mode, 'consulta');
+  assert.ok(byName.Premium.benefits.includes('Todos os benefícios da categoria Normal.'));
+  assert.ok(types.every((t) => t.on_sale === false && t.stock_defined === false), 'vendas fechadas e stock por definir');
   assert.equal((await c.get('/public/faqs')).data.length, 8);
   assert.equal(s.headers.get('x-content-type-options'), 'nosniff');
 });
@@ -512,7 +521,7 @@ test('12. dashboard e relatórios (CSV com BOM e protecção de fórmulas)', asy
   const csv = await fin.get('/admin/reports/orders.csv');
   assert.equal(csv.status, 200);
   const text = csv.data.toString('utf8');
-  assert.ok(text.startsWith('﻿Pedido;Estado;Nome'));
+  assert.ok(text.startsWith('﻿Pedido;Estado;Origem;Nome'));
   assert.match(text, new RegExp(order.order_code));
   assert.match(text, /Ingresso emitido/);
   const tk = await fin.get('/admin/reports/tickets.csv');

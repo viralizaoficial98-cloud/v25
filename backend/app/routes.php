@@ -18,6 +18,9 @@ use App\Services\SettingsService;
 use App\Services\TicketCategoryService;
 use App\Services\TicketService;
 use App\Services\UserService;
+use App\Services\GalleryService;
+use App\Services\SiteService;
+use App\Services\VipService;
 use App\Support\ApiError;
 use App\Support\Audit;
 use App\Support\RateLimiter;
@@ -60,6 +63,20 @@ $r->get('/public/orders/{code}/tickets.pdf', function (Request $q) {
     return Response::file(TicketService::pdf($o), 'application/pdf', 'V25-ingressos-' . $o['order_code'] . '.pdf');
 });
 $r->post('/public/access-request', fn (Request $q) => OrderService::requestAccess($q));
+$r->post('/public/orders/{code}/payment-method', fn (Request $q) => OrderService::setPaymentMethod($q));
+
+// Conteúdos do website (CMS) — apenas versão publicada
+$r->get('/public/site', fn () => SiteService::published());
+
+// Galeria dos eventos
+$r->get('/public/gallery/albums', fn (Request $q) => GalleryService::listPublic($q->query));
+$r->get('/public/gallery/albums/{slug}', fn (Request $q) => GalleryService::albumPublic((string) $q->params['slug'], (int) ($q->query['offset'] ?? 0), (int) ($q->query['limit'] ?? 24)));
+
+// VIP por consulta
+$r->post('/public/vip', fn (Request $q) => Response::json(VipService::create($q), 201));
+$r->get('/public/vip/{code}', fn (Request $q) => VipService::customerView($q));
+$r->post('/public/vip/{code}/accept', fn (Request $q) => Response::json(VipService::accept($q), 201));
+$r->post('/public/vip/{code}/decline', fn (Request $q) => VipService::decline($q));
 
 // =============================================================================
 // AUTENTICAÇÃO
@@ -188,6 +205,10 @@ $r->post('/admin/checkin', function (Request $q) {
 });
 
 // Categorias de ingresso
+$r->get('/admin/ticket-types/{id}/price-history', function (Request $q) use ($id) {
+    Auth::require($q, 'ticket_types.manage');
+    return TicketCategoryService::priceHistory($id($q));
+});
 $r->get('/admin/ticket-types', function (Request $q) {
     Auth::require($q, 'ticket_types.manage');
     return TicketCategoryService::listAdmin();
@@ -206,6 +227,10 @@ $r->delete('/admin/ticket-types/{id}', function (Request $q) use ($id) {
     return ['ok' => true];
 });
 
+$r->get('/admin/settings', function (Request $q) {
+    Auth::require($q, 'settings.manage');
+    return SettingsService::full();
+});
 // Configurações (vendas abertas/fechadas exige gestão de ingressos ou configurações)
 $r->put('/admin/settings', function (Request $q) {
     $in = $q->json();
@@ -261,8 +286,13 @@ $r->delete('/admin/media/{id}', function (Request $q) use ($id) {
     return ['ok' => true];
 });
 $r->post('/admin/uploads/image', function (Request $q) {
-    Auth::require($q, 'content.manage');
-    $up = MediaService::store($q->files['file'] ?? [], (string) ($_POST['folder'] ?? ''), false);
+    Auth::require($q);
+    $folder = (string) ($_POST['folder'] ?? '');
+    $perm = match ($folder) { 'historia', 'integrantes' => 'content.manage', 'site' => 'site.manage', default => null };
+    if ($perm === null || !Auth::can($perm)) {
+        throw new ApiError('SEM_PERMISSAO', 403);
+    }
+    $up = MediaService::store($q->files['file'] ?? [], $folder, false);
     Audit::log('media.imagem_carregada', 'media', null, ['path' => $up['path']]);
     return Response::json($up, 201);
 });
@@ -303,7 +333,11 @@ $r->post('/admin/emails/{eid}/retry', function (Request $q) {
 // Relatórios
 $r->get('/admin/reports/orders.csv', function (Request $q) {
     Auth::require($q, 'reports.view');
-    return ReportService::orders();
+    return ReportService::orders($q->query);
+});
+$r->get('/admin/reports/vip.csv', function (Request $q) {
+    Auth::require($q, 'vip.manage');
+    return ReportService::vip();
 });
 $r->get('/admin/reports/tickets.csv', function (Request $q) {
     Auth::require($q, 'reports.view');
@@ -315,7 +349,7 @@ $r->get('/admin/reports/checkins.csv', function (Request $q) {
 });
 $r->get('/admin/reports/summary', function (Request $q) {
     Auth::require($q, 'reports.view');
-    return ReportService::summary();
+    return ReportService::summary($q->query);
 });
 
 // Utilizadores
@@ -334,6 +368,114 @@ $r->put('/admin/users/{id}', function (Request $q) use ($id) {
 $r->post('/admin/users/{id}/reset', function (Request $q) use ($id) {
     Auth::require($q, 'users.manage');
     return UserService::sendReset($id($q));
+});
+
+// Gestão do website (CMS)
+$r->get('/admin/site', function (Request $q) {
+    Auth::require($q, 'site.manage');
+    return SiteService::adminList();
+});
+$r->get('/admin/site/preview', function (Request $q) {
+    Auth::require($q, 'site.manage');
+    return SiteService::preview();
+});
+$r->put('/admin/site/order', function (Request $q) {
+    Auth::require($q, 'site.manage');
+    return SiteService::reorder((array) $q->input('keys', []));
+});
+$r->put('/admin/site/{key}', function (Request $q) {
+    Auth::require($q, 'site.manage');
+    return SiteService::saveDraft((string) $q->params['key'], (array) $q->input('data', []), (bool) $q->input('publish', false));
+});
+$r->post('/admin/site/{key}/publish', function (Request $q) {
+    Auth::require($q, 'site.manage');
+    return SiteService::publish((string) $q->params['key']);
+});
+$r->post('/admin/site/{key}/discard', function (Request $q) {
+    Auth::require($q, 'site.manage');
+    return SiteService::discardDraft((string) $q->params['key']);
+});
+$r->put('/admin/site/{key}/visibility', function (Request $q) {
+    Auth::require($q, 'site.manage');
+    return SiteService::setEnabled((string) $q->params['key'], (bool) $q->input('enabled', true));
+});
+$r->get('/admin/site/{key}/revisions', function (Request $q) {
+    Auth::require($q, 'site.manage');
+    return SiteService::revisions((string) $q->params['key']);
+});
+$r->post('/admin/site/{key}/restore', function (Request $q) {
+    Auth::require($q, 'site.manage');
+    return SiteService::restore((string) $q->params['key'], (int) $q->input('revision_id', 0));
+});
+
+// Galeria dos eventos
+$r->get('/admin/gallery/albums', function (Request $q) {
+    Auth::require($q, 'gallery.manage');
+    return GalleryService::listAdmin();
+});
+$r->post('/admin/gallery/albums', function (Request $q) {
+    Auth::require($q, 'gallery.manage');
+    return Response::json(GalleryService::createAlbum($q->json()), 201);
+});
+$r->get('/admin/gallery/albums/{id}', function (Request $q) use ($id) {
+    Auth::require($q, 'gallery.manage');
+    return GalleryService::albumAdmin($id($q));
+});
+$r->put('/admin/gallery/albums/{id}', function (Request $q) use ($id) {
+    Auth::require($q, 'gallery.manage');
+    return GalleryService::updateAlbum($id($q), $q->json());
+});
+$r->delete('/admin/gallery/albums/{id}', function (Request $q) use ($id) {
+    Auth::require($q, 'gallery.manage');
+    GalleryService::deleteAlbum($id($q));
+    return ['ok' => true];
+});
+$r->post('/admin/gallery/albums/{id}/items', function (Request $q) use ($id) {
+    Auth::require($q, 'gallery.manage');
+    return Response::json(GalleryService::upload($id($q), $q->files['file'] ?? [], (string) ($_POST['caption'] ?? ''), (string) ($_POST['alt_text'] ?? '')), 201);
+});
+$r->post('/admin/gallery/albums/{id}/videos', function (Request $q) use ($id) {
+    Auth::require($q, 'gallery.manage');
+    return Response::json(GalleryService::addVideoUrl($id($q), $q->str('url', 500), $q->str('caption', 500)), 201);
+});
+$r->put('/admin/gallery/albums/{id}/order', function (Request $q) use ($id) {
+    Auth::require($q, 'gallery.manage');
+    return GalleryService::reorder($id($q), (array) $q->input('ids', []));
+});
+$r->put('/admin/gallery/items/{id}', function (Request $q) use ($id) {
+    Auth::require($q, 'gallery.manage');
+    return GalleryService::updateItem($id($q), $q->json());
+});
+$r->post('/admin/gallery/items/{id}/replace', function (Request $q) use ($id) {
+    Auth::require($q, 'gallery.manage');
+    return GalleryService::replaceFile($id($q), $q->files['file'] ?? []);
+});
+$r->delete('/admin/gallery/items/{id}', function (Request $q) use ($id) {
+    Auth::require($q, 'gallery.manage');
+    GalleryService::deleteItem($id($q));
+    return ['ok' => true];
+});
+
+// VIP
+$r->get('/admin/vip', function (Request $q) {
+    Auth::require($q, 'vip.manage');
+    return VipService::adminList($q->query);
+});
+$r->get('/admin/vip/{id}', function (Request $q) use ($id) {
+    Auth::require($q, 'vip.manage');
+    return VipService::adminDetail($id($q));
+});
+$r->put('/admin/vip/{id}', function (Request $q) use ($id) {
+    Auth::require($q, 'vip.manage');
+    return VipService::update($id($q), $q->json());
+});
+$r->post('/admin/vip/{id}/proposals', function (Request $q) use ($id) {
+    Auth::require($q, 'vip.manage');
+    return Response::json(VipService::propose($id($q), $q->json()), 201);
+});
+$r->post('/admin/vip/{id}/access-link', function (Request $q) use ($id) {
+    Auth::require($q, 'vip.manage');
+    return VipService::accessLink($id($q));
 });
 
 // Auditoria

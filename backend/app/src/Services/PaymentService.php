@@ -43,10 +43,11 @@ final class PaymentService
     public static function approve(string $orderId, string $reference, mixed $amount, string $method, ?string $note): array
     {
         $ref = Util::normalizeReference($reference);
-        $method = $method === 'express' ? 'express' : 'transferencia';
         try {
             return Db::tx(function () use ($orderId, $reference, $ref, $amount, $method, $note) {
                 $o = self::lockOrder($orderId);
+                // Método indicado pelo financeiro; se omitido, o escolhido pelo cliente
+                $method = in_array($method, ['transferencia', 'express'], true) ? $method : (($o['payment_method'] ?? '') === 'express' ? 'express' : 'transferencia');
                 if (in_array($o['status'], ['aprovado', 'emitido'], true)) {
                     return ['status' => $o['status'], 'already_processed' => true];
                 }

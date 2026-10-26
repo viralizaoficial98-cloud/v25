@@ -13,7 +13,7 @@ final class AdminQueryService
 {
     private const ORDER_SELECT = 'SELECT o.*, r.full_name, r.email, r.phone, r.consent_at, r.consent_version,
             i.quantity, i.unit_price_kz, i.category_id, c.name AS category_name, c.lot_label,
-            p.reference AS payment_reference, p.amount_kz AS amount_confirmed_kz, p.method AS payment_method, p.status AS payment_status
+            p.reference AS payment_reference, p.amount_kz AS amount_confirmed_kz, COALESCE(p.method, o.payment_method) AS payment_method, p.status AS payment_status
         FROM orders o
         JOIN registrations r ON r.id = o.registration_id
         JOIN order_items i ON i.order_id = o.id
@@ -32,6 +32,7 @@ final class AdminQueryService
             'rejection_reason' => $o['rejection_reason'], 'cancel_reason' => $o['cancel_reason'], 'reviewed_by' => $o['reviewed_by'],
             'reviewed_at' => Util::iso($o['reviewed_at']), 'created_at' => Util::iso($o['created_at']), 'updated_at' => Util::iso($o['updated_at']),
             'ticket_types' => ['name' => $o['category_name'], 'lot_label' => $o['lot_label']],
+            'source' => $o['source'] ?? 'checkout', 'expired_at' => Util::iso($o['expired_at'] ?? null),
         ];
     }
 
@@ -45,6 +46,14 @@ final class AdminQueryService
         } elseif ($status !== 'all' && $status !== '') {
             $where[] = 'o.status = :st';
             $params['st'] = $status;
+        }
+        if (!empty($q['category']) && Util::isUuid($q['category'])) {
+            $where[] = 'EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.category_id = :cat)';
+            $params['cat'] = $q['category'];
+        }
+        if (in_array($q['source'] ?? '', ['checkout', 'vip'], true)) {
+            $where[] = 'o.source = :src';
+            $params['src'] = $q['source'];
         }
         $term = trim((string) ($q['q'] ?? ''));
         if ($term !== '') {
@@ -98,9 +107,17 @@ final class AdminQueryService
             'revenue_confirmed_kz' => $finance ? (float) Db::value("SELECT COALESCE(SUM(amount_kz),0) FROM payments WHERE status = 'confirmado'") : null,
             'guests_confirmed' => (int) Db::value("SELECT COALESCE(SUM(guests_total),0) FROM orders WHERE status IN ('aprovado','emitido')"),
             'capacity' => $e['capacity'] === null ? null : (int) $e['capacity'],
+            'capacity_available' => $e['capacity'] === null ? null : max(0, (int) $e['capacity'] - (int) Db::value("SELECT COALESCE(SUM(guests_total),0) FROM orders WHERE status <> 'cancelado'")),
+            'reservations_expired' => (int) Db::value('SELECT COUNT(*) FROM orders WHERE expired_at IS NOT NULL'),
+            'checkins' => (int) Db::value("SELECT COUNT(*) FROM tickets WHERE status = 'utilizado'"),
+            'vip_requests_total' => (int) Db::value('SELECT COUNT(*) FROM vip_requests'),
+            'vip_requests_open' => (int) Db::value("SELECT COUNT(*) FROM vip_requests WHERE status IN ('nova','em_analise','proposta_enviada')"),
+            'vip_orders' => (int) Db::value("SELECT COUNT(*) FROM orders WHERE source = 'vip' AND status <> 'cancelado'"),
             'by_type' => array_map(fn ($t) => [
                 'id' => $t['id'], 'name' => $t['name'], 'lot_label' => $t['lot_label'], 'price_kz' => Util::money($t['price_kz']),
                 'total' => (int) $t['quantity_total'], 'reserved' => (int) $t['quantity_reserved'], 'sold' => (int) $t['quantity_sold'],
+                'sale_mode' => $t['sale_mode'] ?? 'directo',
+                'revenue_kz' => $finance ? (float) Db::value("SELECT COALESCE(SUM(p.amount_kz),0) FROM payments p JOIN order_items i ON i.order_id = p.order_id WHERE p.status = 'confirmado' AND i.category_id = :c", ['c' => $t['id']]) : null,
                 'available' => (int) $t['quantity_total'] - (int) $t['quantity_reserved'] - (int) $t['quantity_sold'], 'published' => (bool) $t['published'],
             ], Db::all('SELECT * FROM ticket_categories ORDER BY sort_order, created_at')),
         ];

@@ -15,6 +15,7 @@ final class OrderService
 {
     public const PAYABLE = ['iniciada', 'aguardando_pagamento', 'rejeitado'];
     public const IN_REVIEW = ['comprovativo_enviado', 'em_analise'];
+    public const EXPIRED_REASON = 'Reserva expirada sem comprovativo de pagamento.';
 
     // ------------------------------------------------------------------ validação
     public static function validateRegistration(array $in): array
@@ -52,8 +53,8 @@ final class OrderService
                     return 0;
                 }
                 self::releaseReserved($id);
-                $reason = 'Reserva expirada sem comprovativo de pagamento.';
-                Db::run("UPDATE orders SET status = 'cancelado', cancel_reason = :r WHERE id = :id", ['r' => $reason, 'id' => $id]);
+                $reason = self::EXPIRED_REASON;
+                Db::run("UPDATE orders SET status = 'cancelado', cancel_reason = :r, expired_at = UTC_TIMESTAMP() WHERE id = :id", ['r' => $reason, 'id' => $id]);
                 Audit::history($id, 'cancelado', $reason);
                 return 1;
             });
@@ -111,6 +112,13 @@ final class OrderService
                 $t = Db::one('SELECT * FROM ticket_categories WHERE id = :id AND event_id = :e FOR UPDATE', ['id' => $categoryId, 'e' => $e['id']]);
                 if (!$t || !$t['published']) {
                     throw new ApiError('INGRESSO_INEXISTENTE', 422);
+                }
+                if (($t['sale_mode'] ?? 'directo') === 'consulta') {
+                    // VIP: só por proposta aprovada pela organização (VipService)
+                    throw new ApiError('INGRESSO_POR_CONSULTA', 422);
+                }
+                if ((int) $t['quantity_total'] === 0) {
+                    throw new ApiError('DISPONIBILIDADE_POR_ANUNCIAR', 409);
                 }
                 $now = time();
                 if (!$e['sales_open'] || $t['price_kz'] === null
@@ -229,6 +237,7 @@ final class OrderService
         $item = Db::one('SELECT i.*, c.name, c.lot_label FROM order_items i JOIN ticket_categories c ON c.id = i.category_id WHERE i.order_id = :o LIMIT 1', ['o' => $o['id']]);
         $s = SettingsService::settings();
         $tickets = [];
+        $lastProof = Db::value('SELECT MAX(uploaded_at) FROM payment_proofs WHERE order_id = :o', ['o' => $o['id']]);
         if ($o['status'] === 'emitido') {
             foreach (Db::all('SELECT * FROM tickets WHERE order_id = :o ORDER BY seq', ['o' => $o['id']]) as $k) {
                 $tickets[] = [
@@ -240,6 +249,10 @@ final class OrderService
         return [
             'order_code' => $o['order_code'],
             'status' => $o['status'],
+            'source' => $o['source'] ?? 'checkout',
+            'payment_method' => $o['payment_method'] ?? null,
+            'proof_uploaded_at' => Util::iso($lastProof ? (string) $lastProof : null),
+            'event' => self::eventSummary(),
             'full_name' => $reg['full_name'],
             'email_masked' => Util::maskEmail($reg['email']),
             'phone_masked' => Util::maskPhone($reg['phone']),
@@ -262,6 +275,30 @@ final class OrderService
                 Db::all('SELECT uploaded_at, status, mime_type FROM payment_proofs WHERE order_id = :o ORDER BY uploaded_at', ['o' => $o['id']])),
             'tickets' => $tickets,
         ];
+    }
+
+    /** @return array{name:string,starts_at:?string,venue:string,address:string} */
+    private static function eventSummary(): array
+    {
+        $e = SettingsService::event();
+        return ['name' => $e['name'], 'starts_at' => Util::iso($e['starts_at']), 'venue' => $e['venue'], 'address' => $e['address']];
+    }
+
+    /** Etapa de pagamento: o cliente escolhe Transferência Bancária ou Transferência Express. */
+    public static function setPaymentMethod(Request $req): array
+    {
+        $method = (string) $req->input('method', '');
+        if (!in_array($method, ['transferencia', 'express'], true)) {
+            throw new ApiError('METODO_PAGAMENTO_INVALIDO', 422);
+        }
+        return Db::tx(function () use ($req, $method) {
+            $o = self::byToken($req, true);
+            if (!in_array($o['status'], self::PAYABLE, true)) {
+                throw new ApiError('ESTADO_INVALIDO', 409);
+            }
+            Db::run('UPDATE orders SET payment_method = :m WHERE id = :id', ['m' => $method, 'id' => $o['id']]);
+            return ['payment_method' => $method];
+        });
     }
 
     public static function confirmReservation(Request $req): array

@@ -78,7 +78,8 @@ final class ProofService
         $original = mb_substr(preg_replace('/[^\p{L}\p{N}._ -]/u', '_', (string) ($f['name'] ?? '')) ?? '', 0, 200);
 
         try {
-            return Db::tx(function () use ($o, $id, $storageName, $original, $mime, $size, $sha) {
+            $method = in_array($_POST['method'] ?? '', ['transferencia', 'express'], true) ? (string) $_POST['method'] : null;
+            return Db::tx(function () use ($o, $id, $storageName, $original, $mime, $size, $sha, $method) {
                 $cur = Db::one('SELECT * FROM orders WHERE id = :id FOR UPDATE', ['id' => $o['id']]);
                 if (!in_array($cur['status'], OrderService::PAYABLE, true)) {
                     throw new ApiError('ESTADO_INVALIDO', 409);
@@ -87,7 +88,8 @@ final class ProofService
                     'id' => $id, 'order_id' => $o['id'], 'storage_name' => $storageName, 'original_name' => $original,
                     'mime_type' => $mime, 'size_bytes' => $size, 'sha256' => $sha,
                 ]);
-                Db::run("UPDATE orders SET status = 'comprovativo_enviado', expires_at = NULL, rejection_reason = NULL WHERE id = :id", ['id' => $o['id']]);
+                Db::run("UPDATE orders SET status = 'comprovativo_enviado', expires_at = NULL, rejection_reason = NULL, payment_method = COALESCE(:m, payment_method) WHERE id = :id",
+                    ['m' => $method, 'id' => $o['id']]);
                 Audit::history($o['id'], 'comprovativo_enviado');
                 $email = (string) Db::value('SELECT email FROM registrations WHERE id = :r', ['r' => $o['registration_id']]);
                 MailQueue::enqueue('comprovativo_recebido', $email, $o['id'], [], 'comprovativo:' . $id);

@@ -29,6 +29,9 @@ final class SettingsService
 
     private const SOCIALS = ['instagram', 'facebook', 'youtube', 'tiktok', 'spotify', 'whatsapp'];
 
+    /** Só aparecem na etapa de pagamento de um pedido (nunca no site público). */
+    private const PRIVATE_KEYS = ['bank_account_name', 'bank_account_number', 'bank_iban', 'express_number', 'payment_instructions'];
+
     /** @return array<string,mixed> */
     public static function event(): array
     {
@@ -49,8 +52,14 @@ final class SettingsService
         return $out;
     }
 
-    /** Objecto completo usado pelo site (mesmo formato do frontend: EventSettings). */
+    /** Objecto usado pelo site público — sem dados bancários (só no pedido, etapa de pagamento). */
     public static function public(): array
+    {
+        return array_diff_key(self::full(), array_flip(self::PRIVATE_KEYS));
+    }
+
+    /** Objecto completo (painel e emails). */
+    public static function full(): array
     {
         $e = self::event();
         $s = self::settings();
@@ -82,7 +91,7 @@ final class SettingsService
     /** Actualização parcial pelo administrador (com auditoria antes/depois). */
     public static function update(array $in, string $userId): array
     {
-        $before = self::public();
+        $before = self::full();
         Db::tx(function () use ($in, $userId) {
             $set = [];
             $params = ['id' => self::EVENT_ID];
@@ -150,7 +159,7 @@ final class SettingsService
                 self::put('socials', (string) json_encode($clean ?: new \stdClass(), JSON_UNESCAPED_SLASHES), $userId);
             }
         });
-        $after = self::public();
+        $after = self::full();
         $diff = [];
         foreach ($after as $k => $v) {
             if (($before[$k] ?? null) != $v) {
