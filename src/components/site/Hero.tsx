@@ -45,7 +45,7 @@ export function Hero() {
                 ))}
               </span>
               <motion.span
-                className="mb-3 text-2xl tracking-[0.12em] text-cream sm:mb-5 sm:text-4xl lg:mb-7 lg:text-5xl"
+                className="mb-3 text-2xl tracking-[0.12em] text-fg sm:mb-5 sm:text-4xl lg:mb-7 lg:text-5xl"
                 initial={reduce ? false : { opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 1, delay: 0.6, ease }}
@@ -55,7 +55,7 @@ export function Hero() {
             </span>
           </h1>
           <motion.div initial={reduce ? false : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, delay: 0.8, ease }}>
-            <p className="mt-6 max-w-xl text-lg text-cream/85 md:text-xl">{s.subtitle}</p>
+            <p className="mt-6 max-w-xl text-lg text-fg/85 md:text-xl">{s.subtitle}</p>
             <p className="mt-3 max-w-xl font-display text-xl italic text-gold-light/90 md:text-2xl">“{s.slogan}”</p>
 
             <Countdown target={s.starts_at} className="mt-8" />
@@ -69,7 +69,7 @@ export function Hero() {
               </a>
             </div>
 
-            <ul className="mt-9 flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-cream/60">
+            <ul className="mt-9 flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-fg/60">
               <li className="flex items-center gap-2">
                 <CalendarDays className="h-4 w-4 text-gold" aria-hidden /> {formatEventDate(s.starts_at)}
               </li>
@@ -101,9 +101,9 @@ export function Hero() {
               className="rounded-[2rem]"
               imgClassName="object-contain"
             />
-            <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 rounded-b-[2rem] bg-gradient-to-t from-ink/70 to-transparent" />
+            <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 rounded-b-[2rem] bg-gradient-to-t from-paper/70 to-transparent" />
           </div>
-          <p className="absolute -bottom-4 right-6 rounded-full border border-gold/30 bg-ink/90 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-gold-light backdrop-blur">
+          <p className="absolute -bottom-4 right-6 rounded-full border border-gold/30 bg-paper/90 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-gold-light backdrop-blur">
             25 anos de vozes
           </p>
         </motion.div>

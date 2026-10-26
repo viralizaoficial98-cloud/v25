@@ -12,13 +12,12 @@ export const ORDER_STATUS: Record<OrderStatus, { label: string; tone: 'neutral' 
 };
 
 export const TONE_CLASSES: Record<string, string> = {
-  neutral: 'bg-white/5 text-cream/80 ring-white/15',
-  warn: 'bg-amber-500/10 text-amber-200 ring-amber-400/30',
-  info: 'bg-sky-500/10 text-sky-200 ring-sky-400/30',
-  ok: 'bg-emerald-500/10 text-emerald-200 ring-emerald-400/30',
-  bad: 'bg-rose-500/10 text-rose-200 ring-rose-400/30',
+  neutral: 'bg-fg/[0.04] text-fg/80 ring-fg/15',
+  warn: 'bg-amber-50 text-amber-900 ring-amber-300',
+  info: 'bg-sky-50 text-sky-900 ring-sky-300',
+  ok: 'bg-emerald-50 text-emerald-900 ring-emerald-300',
+  bad: 'bg-rose-50 text-rose-900 ring-rose-300',
 };
-
 /** Passos visíveis ao cliente (ordem do fluxo feliz). */
 export const CUSTOMER_STEPS: { key: OrderStatus[]; label: string }[] = [
   { key: ['iniciada', 'aguardando_pagamento'], label: 'Pedido criado' },

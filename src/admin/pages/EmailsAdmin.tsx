@@ -63,14 +63,14 @@ export default function EmailsAdmin() {
       <div className="mb-4 grid gap-4 lg:grid-cols-2">
         <Panel title="Estado da integração SMTP" actions={<Button size="sm" variant="ghost" onClick={() => status.reload()}><RefreshCw className="h-4 w-4" /></Button>}>
           {status.loading ? (
-            <p className="text-sm text-cream/50">A verificar…</p>
+            <p className="text-sm text-fg/50">A verificar…</p>
           ) : !status.data ? (
             <Alert tone="bad">Não foi possível obter o estado do SMTP.</Alert>
           ) : status.data.configured ? (
             <div className="space-y-1 text-sm">
               <Badge tone="ok">Configurado</Badge>
-              <p className="text-cream/70">Servidor: {status.data.host}:{status.data.port}</p>
-              <p className="text-cream/70">Remetente: {status.data.from}</p>
+              <p className="text-fg/70">Servidor: {status.data.host}:{status.data.port}</p>
+              <p className="text-fg/70">Remetente: {status.data.from}</p>
             </div>
           ) : (
             <Alert tone="warn" title="SMTP por configurar">
@@ -119,12 +119,12 @@ export default function EmailsAdmin() {
           <Table head={['#', 'Modelo', 'Destinatário', 'Estado', 'Tentativas', 'Criado', 'Enviado', '']}>
             {outbox.data?.map((o) => (
               <tr key={o.id}>
-                <Td className="text-xs text-cream/50">{o.id}</Td>
+                <Td className="text-xs text-fg/50">{o.id}</Td>
                 <Td>{TEMPLATE_LABEL[o.template] ?? o.template}</Td>
                 <Td className="text-xs">{o.to_email}</Td>
                 <Td>
                   <Badge tone={o.status === 'enviado' ? 'ok' : o.status === 'falhou' ? 'bad' : 'warn'}>{o.status}</Badge>
-                  {o.last_error && <span className="mt-1 block max-w-[220px] truncate text-xs text-rose-200" title={o.last_error}>{o.last_error}</span>}
+                  {o.last_error && <span className="mt-1 block max-w-[220px] truncate text-xs text-rose-800" title={o.last_error}>{o.last_error}</span>}
                 </Td>
                 <Td>{o.attempts}</Td>
                 <Td className="whitespace-nowrap text-xs">{formatDateTime(o.created_at)}</Td>

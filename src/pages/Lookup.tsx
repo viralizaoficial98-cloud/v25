@@ -40,25 +40,25 @@ export default function Lookup() {
     <div className="container max-w-3xl pb-24 pt-28 md:pt-36">
       <p className="eyebrow">Área do participante</p>
       <h1 className="mt-3 text-5xl font-semibold md:text-6xl">Consultar pedido</h1>
-      <p className="mt-4 text-cream/65">Por segurança, cada pedido só pode ser aberto através da ligação privada criada na inscrição.</p>
+      <p className="mt-4 text-fg/65">Por segurança, cada pedido só pode ser aberto através da ligação privada criada na inscrição.</p>
 
       {saved.length > 0 && (
         <section className="mt-10" aria-labelledby="neste-dispositivo">
           <h2 id="neste-dispositivo" className="text-2xl font-semibold">Pedidos neste dispositivo</h2>
           <ul className="mt-4 space-y-2">
             {saved.map((o) => (
-              <li key={o.code} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-ink-800/60 px-5 py-4">
+              <li key={o.code} className="flex items-center justify-between gap-3 rounded-2xl border border-fg/10 bg-paper-soft/60 px-5 py-4">
                 <Link to={orderPath(o.code, o.token)} className="flex flex-1 items-center justify-between gap-3 hover:text-gold-light">
                   <span>
                     <span className="font-mono text-lg font-bold tracking-wider">{o.code}</span>
-                    <span className="block text-xs text-cream/45">Guardado em {formatDateTime(o.savedAt)}</span>
+                    <span className="block text-xs text-fg/45">Guardado em {formatDateTime(o.savedAt)}</span>
                   </span>
                   <ArrowRight className="h-5 w-5 text-gold" />
                 </Link>
                 <button
                   type="button"
                   aria-label={`Esquecer ${o.code} neste dispositivo`}
-                  className="rounded-full p-2 text-cream/40 hover:bg-white/5 hover:text-rose-200"
+                  className="rounded-full p-2 text-fg/40 hover:bg-fg/5 hover:text-rose-800"
                   onClick={() => {
                     forgetOrderAccess(o.code);
                     setSaved(savedOrders());
@@ -72,9 +72,9 @@ export default function Lookup() {
         </section>
       )}
 
-      <section className="mt-12 rounded-[1.75rem] border border-gold/20 bg-ink-800/60 p-6 md:p-8" aria-labelledby="recuperar">
+      <section className="mt-12 rounded-[1.75rem] border border-gold/20 bg-paper-soft/60 p-6 md:p-8" aria-labelledby="recuperar">
         <h2 id="recuperar" className="flex items-center gap-2 text-2xl font-semibold"><Mail className="h-5 w-5 text-gold" /> Recuperar acesso por email</h2>
-        <p className="mt-2 text-sm text-cream/60">Indique o email usado na inscrição. Se existirem pedidos associados, enviaremos novas ligações seguras para esse endereço.</p>
+        <p className="mt-2 text-sm text-fg/60">Indique o email usado na inscrição. Se existirem pedidos associados, enviaremos novas ligações seguras para esse endereço.</p>
         {sent ? (
           <Alert tone="ok" className="mt-5" title="Pedido recebido">
             Se o email tiver pedidos associados, receberá as ligações em breve. Verifique também a pasta de spam. Se não receber nada, contacte a organização.

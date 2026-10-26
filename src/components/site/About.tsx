@@ -38,13 +38,13 @@ export function About() {
         <div className="lg:col-span-6 lg:col-start-7 lg:pt-16">
           {lead && (
             <Reveal>
-              <p className="font-display text-2xl leading-snug text-cream md:text-[2rem] md:leading-[1.25]">
+              <p className="font-display text-2xl leading-snug text-fg md:text-[2rem] md:leading-[1.25]">
                 <span className="float-left mr-3 mt-1 font-display text-7xl leading-[0.8] text-gold-metal md:text-8xl">{lead.charAt(0)}</span>
                 {lead.slice(1)}
               </p>
             </Reveal>
           )}
-          <div className="mt-8 space-y-6 text-base leading-relaxed text-cream/70 md:text-lg">
+          <div className="mt-8 space-y-6 text-base leading-relaxed text-fg/70 md:text-lg">
             {rest.map((p, i) => (
               <Reveal key={i} delay={0.08 * i}>
                 <p>{p}</p>

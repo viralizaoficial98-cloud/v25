@@ -123,7 +123,7 @@ export default function TicketTypes() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="font-semibold">Estado das vendas</p>
-            <p className="text-xs text-cream/50">Com as vendas fechadas, o site mostra “{settings.sales_closed_message}” e não aceita pedidos.</p>
+            <p className="text-xs text-fg/50">Com as vendas fechadas, o site mostra “{settings.sales_closed_message}” e não aceita pedidos.</p>
           </div>
           <Toggle checked={settings.sales_open} onChange={toggleSales} label={settings.sales_open ? 'Vendas abertas' : 'Vendas fechadas'} />
         </div>
@@ -136,7 +136,7 @@ export default function TicketTypes() {
               <tr key={t.id}>
                 <Td className="font-semibold">{t.name}{t.lot_label && <span className="block text-xs font-normal text-gold">{t.lot_label}</span>}</Td>
                 <Td>{formatKz(t.price_kz)}</Td>
-                <Td>{t.quantity_total} / {t.quantity_reserved} / {t.quantity_sold}<span className="block text-xs text-cream/50">Disponíveis: {t.quantity_total - t.quantity_reserved - t.quantity_sold}</span></Td>
+                <Td>{t.quantity_total} / {t.quantity_reserved} / {t.quantity_sold}<span className="block text-xs text-fg/50">Disponíveis: {t.quantity_total - t.quantity_reserved - t.quantity_sold}</span></Td>
                 <Td className="text-xs">{t.max_per_order}/pedido · {t.max_per_customer}/cliente{t.persons_per_ticket > 1 && <span className="block">{t.persons_per_ticket} pessoas/ingresso</span>}</Td>
                 <Td className="text-xs">{t.sales_start ? formatDateTime(t.sales_start) : 'Imediato'} → {t.sales_end ? formatDateTime(t.sales_end) : 'sem fim'}</Td>
                 <Td>{t.published ? <Badge tone="ok">Publicado</Badge> : <Badge>Rascunho</Badge>}</Td>

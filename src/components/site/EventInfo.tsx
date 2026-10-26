@@ -22,8 +22,8 @@ export function EventInfo() {
             <Reveal key={c.label} delay={i * 0.08}>
               <div className="glass group h-full rounded-3xl p-7 transition hover:border-gold/40">
                 <c.icon className="h-6 w-6 text-gold" aria-hidden />
-                <p className="mt-6 text-xs font-semibold uppercase tracking-[0.24em] text-cream/50">{c.label}</p>
-                <p className="mt-2 font-display text-2xl text-cream">{c.value}</p>
+                <p className="mt-6 text-xs font-semibold uppercase tracking-[0.24em] text-fg/50">{c.label}</p>
+                <p className="mt-2 font-display text-2xl text-fg">{c.value}</p>
               </div>
             </Reveal>
           ))}

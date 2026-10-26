@@ -59,7 +59,7 @@ export default function Orders({ preset }: { preset?: 'review' }) {
             ))}
           </select>
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-cream/40" />
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-fg/40" />
             <input className="admin-input pl-9" placeholder="Pesquisar…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Pesquisar pedidos" />
           </div>
           <Button type="submit" size="sm" variant="subtle">Pesquisar</Button>
@@ -68,21 +68,21 @@ export default function Orders({ preset }: { preset?: 'review' }) {
         <Loadable loading={loading && !data} error={error} empty={data && data.rows.length === 0 ? 'Nenhum pedido encontrado.' : false}>
           <Table head={['Pedido', 'Cliente', 'Ingresso', 'Total', 'Estado', 'Data', '']}>
             {data?.rows.map((o) => (
-              <tr key={o.id} className="hover:bg-white/[0.02]">
+              <tr key={o.id} className="hover:bg-fg/[0.02]">
                 <Td className="font-mono font-semibold">{o.order_code}</Td>
                 <Td>
                   {o.full_name}
-                  <span className="block text-xs text-cream/45">{o.email}</span>
+                  <span className="block text-xs text-fg/45">{o.email}</span>
                 </Td>
                 <Td>{o.quantity} × {o.ticket_types?.name}</Td>
                 <Td>{formatKz(o.total_kz)}</Td>
                 <Td><StatusBadge status={o.status} /></Td>
-                <Td className="whitespace-nowrap text-xs text-cream/60">{formatDateTime(o.created_at)}</Td>
+                <Td className="whitespace-nowrap text-xs text-fg/60">{formatDateTime(o.created_at)}</Td>
                 <Td><Button size="sm" variant="outline" onClick={() => setSelected(o.id)}><Eye className="h-4 w-4" /> Abrir</Button></Td>
               </tr>
             ))}
           </Table>
-          <div className="mt-4 flex items-center justify-between text-xs text-cream/50">
+          <div className="mt-4 flex items-center justify-between text-xs text-fg/50">
             <span>{data?.count ?? 0} pedidos</span>
             <div className="flex items-center gap-2">
               <Button size="icon" variant="ghost" aria-label="Página anterior" disabled={page === 0} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
@@ -161,8 +161,8 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
           <div className="space-y-5 text-sm">
             <div className="flex flex-wrap items-center gap-3">
               <StatusBadge status={o.status} />
-              <span className="text-cream/50">Criado {formatDateTime(o.created_at)}</span>
-              {o.expires_at && <span className="text-amber-200">Expira {formatDateTime(o.expires_at)}</span>}
+              <span className="text-fg/50">Criado {formatDateTime(o.created_at)}</span>
+              {o.expires_at && <span className="text-amber-800">Expira {formatDateTime(o.expires_at)}</span>}
             </div>
             {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
 
@@ -180,8 +180,8 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
                 ['Revisto em', o.reviewed_at ? formatDateTime(o.reviewed_at) : '—'],
               ].map(([k, v]) => (
                 <div key={k}>
-                  <dt className="text-[11px] uppercase tracking-[0.14em] text-cream/45">{k}</dt>
-                  <dd className="mt-0.5 break-words text-cream">{v}</dd>
+                  <dt className="text-[11px] uppercase tracking-[0.14em] text-fg/45">{k}</dt>
+                  <dd className="mt-0.5 break-words text-fg">{v}</dd>
                 </div>
               ))}
             </dl>
@@ -191,15 +191,15 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
             <div>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-gold">Comprovativos</h3>
               {data.proofs.length === 0 ? (
-                <p className="text-cream/50">Nenhum comprovativo enviado.</p>
+                <p className="text-fg/50">Nenhum comprovativo enviado.</p>
               ) : (
                 <ul className="space-y-2">
                   {data.proofs.map((p) => (
-                    <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/5 px-3 py-2">
+                    <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-fg/5 px-3 py-2">
                       <span>
                         {formatDateTime(p.uploaded_at)} · {p.mime_type} · {(p.size_bytes / 1024).toFixed(0)} KB · <em>{p.status}</em>
                         {p.duplicate_of && (
-                          <span className="ml-2 inline-flex items-center gap-1 text-amber-200"><AlertTriangle className="h-3.5 w-3.5" /> ficheiro idêntico noutro pedido</span>
+                          <span className="ml-2 inline-flex items-center gap-1 text-amber-800"><AlertTriangle className="h-3.5 w-3.5" /> ficheiro idêntico noutro pedido</span>
                         )}
                       </span>
                       <Button size="sm" variant="outline" onClick={() => viewProof(p)}><Eye className="h-4 w-4" /> Ver (link temporário)</Button>
@@ -214,9 +214,9 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-gold">Ingressos</h3>
                 <ul className="grid gap-2 sm:grid-cols-2">
                   {data.tickets.map((t) => (
-                    <li key={t.id} className="rounded-xl bg-white/5 px-3 py-2 font-mono">
+                    <li key={t.id} className="rounded-xl bg-fg/5 px-3 py-2 font-mono">
                       {t.ticket_code} · {t.status}
-                      {t.checked_in_at && <span className="block font-sans text-xs text-cream/50">Entrada {formatDateTime(t.checked_in_at)}</span>}
+                      {t.checked_in_at && <span className="block font-sans text-xs text-fg/50">Entrada {formatDateTime(t.checked_in_at)}</span>}
                     </li>
                   ))}
                 </ul>
@@ -225,7 +225,7 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
 
             <div>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-gold">Histórico</h3>
-              <ol className="space-y-1 text-xs text-cream/65">
+              <ol className="space-y-1 text-xs text-fg/65">
                 {data.events.map((e) => (
                   <li key={e.id}>{formatDateTime(e.created_at)} — {ORDER_STATUS[e.status]?.label ?? e.status}{e.note ? `: ${e.note}` : ''}</li>
                 ))}
@@ -256,7 +256,7 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
                   </div>
                 </div>
                 <div><Label htmlFor="note">Nota interna</Label><input id="note" className="admin-input" value={note} onChange={(e) => setNote(e.target.value)} /></div>
-                <label className="flex items-start gap-2 text-xs text-cream/75">
+                <label className="flex items-start gap-2 text-xs text-fg/75">
                   <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} className="mt-0.5 accent-[#c9a45c]" />
                   Confirmo que verifiquei a entrada deste valor na conta bancária (o comprovativo, por si só, não é prova suficiente).
                 </label>
@@ -293,7 +293,7 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
             )}
 
             {!mode && (
-              <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
+              <div className="flex flex-wrap gap-2 border-t border-fg/10 pt-4">
                 {reviewable && can('payments.review') && <Button variant="success" size="sm" onClick={() => setMode('approve')}>Aprovar pagamento</Button>}
                 {reviewable && can('payments.review') && <Button variant="danger" size="sm" onClick={() => setMode('reject')}>Rejeitar</Button>}
                 {o.status === 'emitido' && (
@@ -316,7 +316,7 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
                   <Link2 className="h-4 w-4" /> Gerar ligação para o cliente
                 </Button>
                 {can('orders.cancel') && o.status !== 'cancelado' && (
-                  <Button size="sm" variant="ghost" className="text-rose-200" onClick={() => setMode('cancel')}>Cancelar pedido</Button>
+                  <Button size="sm" variant="ghost" className="text-rose-800" onClick={() => setMode('cancel')}>Cancelar pedido</Button>
                 )}
               </div>
             )}

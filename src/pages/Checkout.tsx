@@ -154,7 +154,7 @@ export default function Checkout() {
           ['revisao', '2. Revisão'],
           ['pagamento', '3. Pagamento'],
         ].map(([k, l]) => (
-          <li key={k} aria-current={step === k ? 'step' : undefined} className={step === k ? 'text-gold-light' : 'text-cream/35'}>
+          <li key={k} aria-current={step === k ? 'step' : undefined} className={step === k ? 'text-gold-light' : 'text-fg/35'}>
             {l}
           </li>
         ))}
@@ -162,7 +162,7 @@ export default function Checkout() {
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
         {step === 'dados' ? (
-          <form onSubmit={toReview} noValidate className="space-y-6 rounded-[1.75rem] border border-white/10 bg-ink-800/60 p-6 md:p-8">
+          <form onSubmit={toReview} noValidate className="space-y-6 rounded-[1.75rem] border border-fg/10 bg-paper-soft/60 p-6 md:p-8">
             <Field label="Categoria de ingresso" required error={errors.ticketTypeId}>
               {(id, d) => (
                 <Select id={id} aria-describedby={d} value={typeId} onChange={(e) => setTypeId(e.target.value)} invalid={!!errors.ticketTypeId}>
@@ -230,21 +230,21 @@ export default function Checkout() {
             </div>
 
             <div>
-              <label className="flex cursor-pointer items-start gap-3 text-sm text-cream/75">
+              <label className="flex cursor-pointer items-start gap-3 text-sm text-fg/75">
                 <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} aria-invalid={!!errors.consent || undefined}
-                  className="mt-0.5 h-5 w-5 shrink-0 rounded border-gold/40 bg-ink-700 accent-[#c9a45c]" />
+                  className="mt-0.5 h-5 w-5 shrink-0 rounded border-gold/40 bg-paper-muted accent-[#c9a45c]" />
                 <span>
                   Autorizo a utilização dos meus dados pessoais (nome, email e telefone) exclusivamente para a gestão desta inscrição, pagamento, emissão de ingressos e comunicações sobre o evento, nos termos da{' '}
                   <Link to="/privacidade" target="_blank" className="text-gold-light underline">Política de Privacidade</Link>.
                 </span>
               </label>
-              {errors.consent && <p role="alert" className="mt-2 text-xs font-medium text-rose-300">{errors.consent}</p>}
+              {errors.consent && <p role="alert" className="mt-2 text-xs font-medium text-rose-800">{errors.consent}</p>}
             </div>
 
             <Button type="submit" size="lg" className="w-full">Continuar para revisão</Button>
           </form>
         ) : (
-          <div className="space-y-6 rounded-[1.75rem] border border-white/10 bg-ink-800/60 p-6 md:p-8">
+          <div className="space-y-6 rounded-[1.75rem] border border-fg/10 bg-paper-soft/60 p-6 md:p-8">
             <h2 className="text-3xl font-semibold">Confirme os seus dados</h2>
             <dl className="grid gap-4 text-sm sm:grid-cols-2">
               {[
@@ -254,8 +254,8 @@ export default function Checkout() {
                 ['Convidados', String(guests)],
               ].map(([k, v]) => (
                 <div key={k}>
-                  <dt className="text-[11px] uppercase tracking-[0.2em] text-cream/45">{k}</dt>
-                  <dd className="mt-1 break-words font-semibold text-cream">{v}</dd>
+                  <dt className="text-[11px] uppercase tracking-[0.2em] text-fg/45">{k}</dt>
+                  <dd className="mt-1 break-words font-semibold text-fg">{v}</dd>
                 </div>
               ))}
             </dl>
@@ -280,25 +280,25 @@ export default function Checkout() {
         )}
 
         <aside className="lg:sticky lg:top-28 lg:self-start" aria-label="Resumo do pedido">
-          <div className="rounded-[1.75rem] border border-gold/30 bg-gradient-to-b from-espresso/80 to-ink-800 p-6">
+          <div className="rounded-[1.75rem] border border-gold/30 bg-gradient-to-b from-espresso/80 to-paper-soft p-6">
             <p className="eyebrow">Resumo do pedido</p>
             <p className="mt-3 font-display text-2xl">{s.event_name}</p>
-            <p className="mt-1 text-sm text-cream/55">{formatEventDate(s.starts_at)} · {formatEventTime(s.starts_at)} · {s.venue}</p>
+            <p className="mt-1 text-sm text-fg/55">{formatEventDate(s.starts_at)} · {formatEventTime(s.starts_at)} · {s.venue}</p>
             <div className="hairline my-5" />
             {type ? (
               <dl className="space-y-3 text-sm">
-                <div className="flex justify-between gap-4"><dt className="text-cream/60">Categoria</dt><dd className="text-right font-semibold">{type.name}{type.lot_label ? ` · ${type.lot_label}` : ''}</dd></div>
-                <div className="flex justify-between gap-4"><dt className="text-cream/60">Preço unitário</dt><dd>{formatKz(type.price_kz)}</dd></div>
-                <div className="flex justify-between gap-4"><dt className="text-cream/60">Quantidade</dt><dd>× {quantity}</dd></div>
-                <div className="flex justify-between gap-4"><dt className="text-cream/60">Convidados</dt><dd>{guests}</dd></div>
+                <div className="flex justify-between gap-4"><dt className="text-fg/60">Categoria</dt><dd className="text-right font-semibold">{type.name}{type.lot_label ? ` · ${type.lot_label}` : ''}</dd></div>
+                <div className="flex justify-between gap-4"><dt className="text-fg/60">Preço unitário</dt><dd>{formatKz(type.price_kz)}</dd></div>
+                <div className="flex justify-between gap-4"><dt className="text-fg/60">Quantidade</dt><dd>× {quantity}</dd></div>
+                <div className="flex justify-between gap-4"><dt className="text-fg/60">Convidados</dt><dd>{guests}</dd></div>
                 <div className="hairline" />
                 <div className="flex items-end justify-between gap-4">
-                  <dt className="text-cream/60">Total</dt>
+                  <dt className="text-fg/60">Total</dt>
                   <dd className="font-display text-3xl text-gold-metal" aria-live="polite">{formatKz(total)}</dd>
                 </div>
               </dl>
             ) : (
-              <p className="text-sm text-cream/50">Escolha uma categoria.</p>
+              <p className="text-sm text-fg/50">Escolha uma categoria.</p>
             )}
           </div>
         </aside>
@@ -310,7 +310,7 @@ export default function Checkout() {
 function Shell({ children, title = 'Inscrição' }: { children: React.ReactNode; title?: string }) {
   return (
     <div className="container max-w-6xl pb-24 pt-28 md:pt-36">
-      <Link to="/#ingressos" className="mb-6 inline-flex items-center gap-2 text-sm text-cream/60 hover:text-gold-light">
+      <Link to="/#ingressos" className="mb-6 inline-flex items-center gap-2 text-sm text-fg/60 hover:text-gold-light">
         <ArrowLeft className="h-4 w-4" /> Voltar aos ingressos
       </Link>
       <h1 className="mb-6 text-5xl font-semibold md:text-6xl">{title}</h1>

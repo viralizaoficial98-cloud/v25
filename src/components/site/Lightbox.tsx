@@ -52,8 +52,8 @@ export function Lightbox({ items, index, onIndex }: { items: LightboxItem[]; ind
                 ) : (
                   <img src={item.src} srcSet={item.srcSet} sizes="100vw" alt={item.alt} className="max-h-[80vh] max-w-full rounded-xl object-contain" />
                 )}
-                {item.caption && <figcaption className="mt-4 max-w-2xl text-center text-sm text-cream/70">{item.caption}</figcaption>}
-                <p className="mt-2 text-xs text-cream/40">
+                {item.caption && <figcaption className="mt-4 max-w-2xl text-center text-sm text-fg/70">{item.caption}</figcaption>}
+                <p className="mt-2 text-xs text-fg/40">
                   {(index ?? 0) + 1} / {items.length}
                 </p>
               </motion.figure>
@@ -61,15 +61,15 @@ export function Lightbox({ items, index, onIndex }: { items: LightboxItem[]; ind
           </AnimatePresence>
           {items.length > 1 && (
             <>
-              <button type="button" onClick={() => go(-1)} aria-label="Anterior" className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-cream hover:bg-white/20 md:left-6">
+              <button type="button" onClick={() => go(-1)} aria-label="Anterior" className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-fg/10 p-3 text-fg hover:bg-fg/20 md:left-6">
                 <ChevronLeft className="h-6 w-6" />
               </button>
-              <button type="button" onClick={() => go(1)} aria-label="Seguinte" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-cream hover:bg-white/20 md:right-6">
+              <button type="button" onClick={() => go(1)} aria-label="Seguinte" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-fg/10 p-3 text-fg hover:bg-fg/20 md:right-6">
                 <ChevronRight className="h-6 w-6" />
               </button>
             </>
           )}
-          <D.Close aria-label="Fechar" className="absolute right-4 top-4 rounded-full bg-white/10 p-3 text-cream hover:bg-white/20">
+          <D.Close aria-label="Fechar" className="absolute right-4 top-4 rounded-full bg-fg/10 p-3 text-fg hover:bg-fg/20">
             <X className="h-6 w-6" />
           </D.Close>
         </D.Content>

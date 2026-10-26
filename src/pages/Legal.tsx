@@ -30,7 +30,7 @@ export default function Legal({ kind }: { kind: 'privacidade' | 'termos' }) {
     <div className="container max-w-3xl pb-24 pt-28 md:pt-36">
       <p className="eyebrow">{settings.event_name}</p>
       <h1 className="mt-3 text-5xl font-semibold">{title}</h1>
-      <div className="mt-10 space-y-5 leading-relaxed text-cream/75">
+      <div className="mt-10 space-y-5 leading-relaxed text-fg/75">
         {text.split(/\n{2,}/).map((p, i) => (
           <p key={i} className="whitespace-pre-line">{p}</p>
         ))}

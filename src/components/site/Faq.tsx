@@ -31,16 +31,16 @@ export function Faq() {
         {loading ? (
           <div className="flex justify-center"><Spinner /></div>
         ) : (
-          <A.Root type="single" collapsible className="divide-y divide-white/10 rounded-3xl border border-gold/15 bg-ink-800/50">
+          <A.Root type="single" collapsible className="divide-y divide-fg/10 rounded-3xl border border-gold/15 bg-paper-soft/50">
             {faqs.map((f) => (
               <A.Item key={f.id} value={f.id}>
                 <A.Header>
-                  <A.Trigger className="group flex w-full items-center justify-between gap-4 px-6 py-5 text-left font-display text-xl text-cream transition hover:text-gold-light md:text-2xl">
+                  <A.Trigger className="group flex w-full items-center justify-between gap-4 px-6 py-5 text-left font-display text-xl text-fg transition hover:text-gold-light md:text-2xl">
                     {f.question}
                     <ChevronDown className="h-5 w-5 shrink-0 text-gold transition-transform duration-300 group-data-[state=open]:rotate-180" aria-hidden />
                   </A.Trigger>
                 </A.Header>
-                <A.Content className="overflow-hidden px-6 text-cream/70 data-[state=closed]:hidden">
+                <A.Content className="overflow-hidden px-6 text-fg/70 data-[state=closed]:hidden">
                   <p className="whitespace-pre-line pb-6 leading-relaxed">{f.answer}</p>
                 </A.Content>
               </A.Item>

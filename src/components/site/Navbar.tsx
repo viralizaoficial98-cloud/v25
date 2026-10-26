@@ -19,7 +19,7 @@ export function Logo({ className }: { className?: string }) {
   return (
     <span className={cn('flex items-baseline gap-2 font-display leading-none', className)}>
       <span className="text-gold-metal text-2xl font-bold tracking-tight md:text-[1.7rem]">V25</span>
-      <span className="text-[0.68rem] font-sans font-semibold uppercase tracking-[0.34em] text-cream/80">O Legado</span>
+      <span className="text-[0.68rem] font-sans font-semibold uppercase tracking-[0.34em] text-fg/80">O Legado</span>
     </span>
   );
 }
@@ -49,10 +49,10 @@ export function Navbar() {
     <header
       className={cn(
         'fixed inset-x-0 top-0 z-40 transition-all duration-500',
-        scrolled || !onHome ? 'border-b border-gold/10 bg-ink/85 backdrop-blur-xl' : 'bg-gradient-to-b from-ink/70 to-transparent',
+        scrolled || !onHome ? 'border-b border-gold/10 bg-paper/85 backdrop-blur-xl' : 'bg-gradient-to-b from-paper/70 to-transparent',
       )}
     >
-      <a href="#conteudo" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:rounded focus:bg-gold focus:px-3 focus:py-2 focus:text-ink">
+      <a href="#conteudo" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:rounded focus:bg-gold focus:px-3 focus:py-2 focus:text-fg">
         Saltar para o conteúdo
       </a>
       <nav className="container flex h-16 items-center justify-between md:h-20" aria-label="Principal">
@@ -62,14 +62,14 @@ export function Navbar() {
         <ul className="hidden items-center gap-7 lg:flex">
           {NAV.map((n) => (
             <li key={n.href}>
-              <a href={href(n.href)} className="text-[13px] font-medium text-cream/70 transition hover:text-gold-light">
+              <a href={href(n.href)} className="text-[13px] font-medium text-fg/70 transition hover:text-gold-light">
                 {n.label}
               </a>
             </li>
           ))}
         </ul>
         <div className="flex items-center gap-2">
-          <Link to="/consultar" className="hidden text-[13px] font-medium text-cream/70 hover:text-gold-light md:inline">
+          <Link to="/consultar" className="hidden text-[13px] font-medium text-fg/70 hover:text-gold-light md:inline">
             Consultar pedido
           </Link>
           <a href={href('#ingressos')} className={cn(buttonVariants({ size: 'sm' }), 'hidden sm:inline-flex')}>
@@ -77,7 +77,7 @@ export function Navbar() {
           </a>
           <button
             type="button"
-            className="rounded-full p-2.5 text-cream lg:hidden"
+            className="rounded-full p-2.5 text-fg lg:hidden"
             aria-label={open ? 'Fechar menu' : 'Abrir menu'}
             aria-expanded={open}
             aria-controls="menu-movel"
@@ -94,7 +94,7 @@ export function Navbar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 top-16 z-40 bg-ink/97 backdrop-blur-xl lg:hidden"
+            className="fixed inset-0 top-16 z-40 bg-paper/97 backdrop-blur-xl lg:hidden"
           >
             <motion.ul
               className="container flex flex-col gap-1 pt-8"
@@ -105,11 +105,11 @@ export function Navbar() {
               {[...NAV, { href: '/consultar', label: 'Consultar pedido' }].map((n) => (
                 <motion.li key={n.href} variants={{ h: { opacity: 0, x: -16 }, s: { opacity: 1, x: 0 } }}>
                   {n.href.startsWith('/') ? (
-                    <Link to={n.href} onClick={() => setOpen(false)} className="block border-b border-white/5 py-4 font-display text-3xl text-cream">
+                    <Link to={n.href} onClick={() => setOpen(false)} className="block border-b border-fg/5 py-4 font-display text-3xl text-fg">
                       {n.label}
                     </Link>
                   ) : (
-                    <a href={href(n.href)} onClick={() => setOpen(false)} className="block border-b border-white/5 py-4 font-display text-3xl text-cream">
+                    <a href={href(n.href)} onClick={() => setOpen(false)} className="block border-b border-fg/5 py-4 font-display text-3xl text-fg">
                       {n.label}
                     </a>
                   )}

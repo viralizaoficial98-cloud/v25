@@ -56,9 +56,9 @@ export default function Dashboard() {
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {cards.map((c) => {
             const body = (
-              <div className={`h-full rounded-2xl border p-5 ${c.highlight ? 'border-gold/50 bg-gold/10' : 'border-white/10 bg-ink-800/70'}`}>
-                <p className="text-xs uppercase tracking-[0.14em] text-cream/50">{c.label}</p>
-                <p className="mt-2 font-display text-4xl text-cream">{c.value}</p>
+              <div className={`h-full rounded-2xl border p-5 ${c.highlight ? 'border-gold/50 bg-gold/10' : 'border-fg/10 bg-paper-soft/70'}`}>
+                <p className="text-xs uppercase tracking-[0.14em] text-fg/50">{c.label}</p>
+                <p className="mt-2 font-display text-4xl text-fg">{c.value}</p>
               </div>
             );
             return c.to ? <Link key={c.label} to={c.to}>{body}</Link> : <div key={c.label}>{body}</div>;
@@ -67,22 +67,22 @@ export default function Dashboard() {
         {data && (
           <Panel title="Capacidade e disponibilidade por categoria" className="mt-6">
             {data.by_type.length === 0 ? (
-              <p className="text-sm text-cream/50">Ainda não existem categorias de ingresso. {role === 'admin' && <Link to="/admin/ingressos" className="text-gold-light underline">Criar ingressos</Link>}</p>
+              <p className="text-sm text-fg/50">Ainda não existem categorias de ingresso. {role === 'admin' && <Link to="/admin/ingressos" className="text-gold-light underline">Criar ingressos</Link>}</p>
             ) : (
               <Table head={['Categoria', 'Preço', 'Total', 'Reservados', 'Vendidos', 'Disponíveis', 'Ocupação', 'Estado']}>
                 {data.by_type.map((t) => {
                   const pct = t.total ? Math.round(((t.sold + t.reserved) / t.total) * 100) : 0;
                   return (
                     <tr key={t.id}>
-                      <Td className="font-semibold">{t.name}{t.lot_label && <span className="block text-xs font-normal text-cream/50">{t.lot_label}</span>}</Td>
+                      <Td className="font-semibold">{t.name}{t.lot_label && <span className="block text-xs font-normal text-fg/50">{t.lot_label}</span>}</Td>
                       <Td>{formatKz(t.price_kz)}</Td>
                       <Td>{t.total}</Td>
                       <Td>{t.reserved}</Td>
                       <Td>{t.sold}</Td>
                       <Td>{t.available}</Td>
                       <Td>
-                        <div className="h-2 w-24 rounded-full bg-white/10"><div className="h-2 rounded-full bg-gold" style={{ width: `${pct}%` }} /></div>
-                        <span className="text-xs text-cream/50">{pct}%</span>
+                        <div className="h-2 w-24 rounded-full bg-fg/10"><div className="h-2 rounded-full bg-gold" style={{ width: `${pct}%` }} /></div>
+                        <span className="text-xs text-fg/50">{pct}%</span>
                       </Td>
                       <Td>{t.published ? <Badge tone="ok">Publicado</Badge> : <Badge>Rascunho</Badge>}</Td>
                     </tr>

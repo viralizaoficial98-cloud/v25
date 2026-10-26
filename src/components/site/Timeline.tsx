@@ -12,7 +12,7 @@ export function Timeline() {
   const current = data[active];
 
   return (
-    <section id="historia" className="section bg-gradient-to-b from-ink via-ink-800 to-ink" aria-labelledby="historia-titulo">
+    <section id="historia" className="section bg-gradient-to-b from-paper via-paper-soft to-paper" aria-labelledby="historia-titulo">
       <div className="container">
         <SectionHeading
           eyebrow="25 anos de história"
@@ -36,17 +36,17 @@ export function Timeline() {
                     aria-hidden
                     className={cn(
                       'absolute -left-[31px] top-4 h-3 w-3 rounded-full border transition',
-                      i === active ? 'border-gold-light bg-gold shadow-[0_0_18px_rgba(232,207,142,.8)]' : 'border-gold/40 bg-ink',
+                      i === active ? 'border-gold-light bg-gold shadow-[0_0_18px_rgba(232,207,142,.8)]' : 'border-gold/40 bg-paper',
                     )}
                   />
                   <button
                     type="button"
                     onClick={() => setActive(i)}
                     aria-current={i === active ? 'step' : undefined}
-                    className={cn('w-full rounded-xl px-4 py-3 text-left transition', i === active ? 'bg-gold/10' : 'hover:bg-white/5')}
+                    className={cn('w-full rounded-xl px-4 py-3 text-left transition', i === active ? 'bg-gold/10' : 'hover:bg-fg/5')}
                   >
                     <span className="block text-xs font-semibold uppercase tracking-[0.24em] text-gold">{e.period_label}</span>
-                    <span className={cn('mt-1 block font-display text-xl', i === active ? 'text-cream' : 'text-cream/60')}>{e.title}</span>
+                    <span className={cn('mt-1 block font-display text-xl', i === active ? 'text-fg' : 'text-fg/60')}>{e.title}</span>
                   </button>
                 </li>
               ))}
@@ -64,12 +64,12 @@ export function Timeline() {
                     className="glass overflow-hidden rounded-3xl"
                   >
                     {current.image_path && (
-                      <img src={mediaUrl(current.image_path) ?? ''} alt={current.title} loading="lazy" className="max-h-[420px] w-full bg-ink-700 object-contain" />
+                      <img src={mediaUrl(current.image_path) ?? ''} alt={current.title} loading="lazy" className="max-h-[420px] w-full bg-paper-muted object-contain" />
                     )}
                     <div className="p-7 md:p-9">
                       <p className="eyebrow">{current.period_label}</p>
                       <h3 className="mt-3 text-3xl font-semibold md:text-4xl">{current.title}</h3>
-                      {current.description && <p className="mt-4 whitespace-pre-line leading-relaxed text-cream/70">{current.description}</p>}
+                      {current.description && <p className="mt-4 whitespace-pre-line leading-relaxed text-fg/70">{current.description}</p>}
                     </div>
                   </motion.article>
                 )}

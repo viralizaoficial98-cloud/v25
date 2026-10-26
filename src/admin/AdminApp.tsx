@@ -61,14 +61,14 @@ export const NAV_ITEMS: NavItem[] = [
 function AuthCard({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(ellipse_at_top,rgba(201,164,92,.15),transparent_60%)] px-4">
-      <div className="w-full max-w-sm space-y-5 rounded-3xl border border-gold/20 bg-ink-800/80 p-8 shadow-card">
+      <div className="w-full max-w-sm space-y-5 rounded-3xl border border-gold/20 bg-paper-soft/80 p-8 shadow-card">
         <div className="text-center">
           <Logo className="justify-center" />
           <h1 className="mt-4 text-2xl">{title}</h1>
-          {subtitle && <p className="mt-1 text-xs text-cream/50">{subtitle}</p>}
+          {subtitle && <p className="mt-1 text-xs text-fg/50">{subtitle}</p>}
         </div>
         {children}
-        <Link to="/" className="block text-center text-xs text-cream/45 hover:text-gold-light">← Voltar ao site</Link>
+        <Link to="/" className="block text-center text-xs text-fg/45 hover:text-gold-light">← Voltar ao site</Link>
       </div>
     </div>
   );
@@ -219,7 +219,7 @@ function Shell() {
         <div className="max-w-md space-y-4 text-center">
           <ShieldCheck className="mx-auto h-10 w-10 text-gold" />
           <h1 className="text-2xl">Sem permissões atribuídas</h1>
-          <p className="text-sm text-cream/60">A sua conta ({user.email}) não tem um perfil activo na equipa do V25. Peça a um administrador para lhe atribuir um perfil.</p>
+          <p className="text-sm text-fg/60">A sua conta ({user.email}) não tem um perfil activo na equipa do V25. Peça a um administrador para lhe atribuir um perfil.</p>
           <Button variant="outline" onClick={signOut}>Terminar sessão</Button>
         </div>
       </div>
@@ -235,7 +235,7 @@ function Shell() {
           end={n.to === ''}
           onClick={() => setOpen(false)}
           className={({ isActive }) =>
-            cn('flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition', isActive ? 'bg-gold/15 text-gold-light' : 'text-cream/65 hover:bg-white/5 hover:text-cream')
+            cn('flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition', isActive ? 'bg-gold/15 text-gold-light' : 'text-fg/65 hover:bg-fg/5 hover:text-fg')
           }
         >
           <n.icon className="h-4 w-4 shrink-0" aria-hidden /> {n.label}
@@ -244,31 +244,31 @@ function Shell() {
     </nav>
   );
   const footer = (
-    <div className="mt-6 border-t border-white/10 pt-4 text-xs text-cream/50">
+    <div className="mt-6 border-t border-fg/10 pt-4 text-xs text-fg/50">
       <p className="truncate">{user.email}</p>
       <p className="text-gold">{ROLE_LABEL[role]}</p>
-      <button type="button" onClick={signOut} className="mt-3 inline-flex items-center gap-2 text-cream/70 hover:text-rose-200">
+      <button type="button" onClick={signOut} className="mt-3 inline-flex items-center gap-2 text-fg/70 hover:text-rose-800">
         <LogOut className="h-4 w-4" /> Terminar sessão
       </button>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-ink">
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-white/10 bg-ink/90 px-4 backdrop-blur lg:hidden">
+    <div className="min-h-screen bg-paper">
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-fg/10 bg-paper/90 px-4 backdrop-blur lg:hidden">
         <Logo />
         <button type="button" aria-label="Menu" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="p-2">
           {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </header>
       {open && (
-        <div className="fixed inset-0 top-14 z-30 overflow-y-auto bg-ink p-4 lg:hidden">
+        <div className="fixed inset-0 top-14 z-30 overflow-y-auto bg-paper p-4 lg:hidden">
           {nav}
           {footer}
         </div>
       )}
       <div className="flex">
-        <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-y-auto border-r border-white/10 bg-ink-800/60 p-4 lg:flex">
+        <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-y-auto border-r border-fg/10 bg-paper-soft/60 p-4 lg:flex">
           <Link to="/" className="mb-8 mt-2 px-2"><Logo /></Link>
           {nav}
           <div className="mt-auto">{footer}</div>

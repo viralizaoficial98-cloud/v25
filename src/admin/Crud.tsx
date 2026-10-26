@@ -91,12 +91,12 @@ export function CrudPage({ type, title, description, fields, empty, defaults, re
       {err && !draft && <Alert tone="bad" className="mb-4">{err}</Alert>}
       <Panel>
         <Loadable loading={loading} error={error} empty={data.length === 0 ? empty : false}>
-          <ul className="divide-y divide-white/5">
+          <ul className="divide-y divide-fg/5">
             {data.map((r, i) => (
               <li key={r.id} className="flex items-start gap-3 py-3">
                 <div className="flex flex-col">
-                  <button type="button" aria-label="Subir" disabled={i === 0} onClick={() => move(i, -1)} className="p-1 text-cream/40 hover:text-cream disabled:opacity-20"><ArrowUp className="h-4 w-4" /></button>
-                  <button type="button" aria-label="Descer" disabled={i === data.length - 1} onClick={() => move(i, 1)} className="p-1 text-cream/40 hover:text-cream disabled:opacity-20"><ArrowDown className="h-4 w-4" /></button>
+                  <button type="button" aria-label="Subir" disabled={i === 0} onClick={() => move(i, -1)} className="p-1 text-fg/40 hover:text-fg disabled:opacity-20"><ArrowUp className="h-4 w-4" /></button>
+                  <button type="button" aria-label="Descer" disabled={i === data.length - 1} onClick={() => move(i, 1)} className="p-1 text-fg/40 hover:text-fg disabled:opacity-20"><ArrowDown className="h-4 w-4" /></button>
                 </div>
                 <div className="min-w-0 flex-1">{render(r)}</div>
                 {'published' in r && (r.published ? <Badge tone="ok">Publicado</Badge> : <Badge>Rascunho</Badge>)}
@@ -131,7 +131,7 @@ export function CrudPage({ type, title, description, fields, empty, defaults, re
                     {typeof v === 'string' && v && !file && <img src={mediaUrl(v) ?? ''} alt="" className="mb-2 h-24 rounded-lg object-contain" />}
                     <input id={id} type="file" accept="image/jpeg,image/png,image/webp,image/avif" className="text-sm" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
                     {typeof v === 'string' && v && (
-                      <button type="button" className="ml-3 text-xs text-rose-200 underline" onClick={() => setDraft({ ...draft, [f.key]: null })}>Remover imagem</button>
+                      <button type="button" className="ml-3 text-xs text-rose-800 underline" onClick={() => setDraft({ ...draft, [f.key]: null })}>Remover imagem</button>
                     )}
                   </div>
                 );
@@ -143,7 +143,7 @@ export function CrudPage({ type, title, description, fields, empty, defaults, re
                   ) : (
                     <input id={id} className="admin-input" required={f.required} placeholder={f.placeholder} value={String(v ?? '')} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })} />
                   )}
-                  {f.hint && <p className="mt-1 text-xs text-cream/45">{f.hint}</p>}
+                  {f.hint && <p className="mt-1 text-xs text-fg/45">{f.hint}</p>}
                 </div>
               );
             })}

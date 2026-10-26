@@ -116,7 +116,7 @@ export default function SettingsAdmin() {
             <div><Label htmlFor="rh">Prazo da reserva (horas)</Label><input id="rh" type="number" min={1} max={720} className="admin-input" value={form.reservation_hours} onChange={(e) => setForm({ ...form, reservation_hours: Number(e.target.value) || 48 })} /></div>
             <div><Label htmlFor="scm">Mensagem com vendas fechadas</Label><input id="scm" className="admin-input" value={form.sales_closed_message} onChange={(e) => setForm({ ...form, sales_closed_message: e.target.value })} /></div>
           </div>
-          <p className="mt-3 text-xs text-cream/45">Abrir/fechar vendas: página “Ingressos, lotes e stock”. Estado actual: <strong>{settings.sales_open ? 'abertas' : 'fechadas'}</strong>.</p>
+          <p className="mt-3 text-xs text-fg/45">Abrir/fechar vendas: página “Ingressos, lotes e stock”. Estado actual: <strong>{settings.sales_open ? 'abertas' : 'fechadas'}</strong>.</p>
         </Panel>
         {GROUPS.map((g) => (
           <Panel key={g.title} title={g.title}>
@@ -129,7 +129,7 @@ export default function SettingsAdmin() {
                   ) : (
                     <input id={f.k} className="admin-input" value={(form[f.k] as string) ?? ''} onChange={(e) => setForm({ ...form, [f.k]: e.target.value })} />
                   )}
-                  {f.hint && <p className="mt-1 text-xs text-cream/45">{f.hint}</p>}
+                  {f.hint && <p className="mt-1 text-xs text-fg/45">{f.hint}</p>}
                 </div>
               ))}
             </div>

@@ -29,7 +29,7 @@ export default function FaqAdmin() {
       render={(r) => (
         <div>
           <p className="font-semibold">{String(r.question)}</p>
-          <p className="line-clamp-2 text-xs text-cream/50">{String(r.answer)}</p>
+          <p className="line-clamp-2 text-xs text-fg/50">{String(r.answer)}</p>
         </div>
       )}
     />

@@ -7,7 +7,7 @@ import type { OrderStatus } from '@/lib/types';
 
 export function Spinner({ className, label = 'A carregar…' }: { className?: string; label?: string }) {
   return (
-    <span role="status" className={cn('inline-flex items-center gap-2 text-sm text-cream/60', className)}>
+    <span role="status" className={cn('inline-flex items-center gap-2 text-sm text-fg/60', className)}>
       <Loader2 className="h-4 w-4 animate-spin text-gold" aria-hidden />
       {label}
     </span>
@@ -48,7 +48,7 @@ export function Alert({
       <Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
       <div className="space-y-1">
         {title && <p className="font-semibold">{title}</p>}
-        {children && <div className="text-cream/80">{children}</div>}
+        {children && <div className="text-fg/80">{children}</div>}
       </div>
     </div>
   );
@@ -77,7 +77,7 @@ export function CopyButton({ value, label, className }: { value: string; label: 
       onClick={copy}
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full border border-gold/40 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-gold-light transition hover:bg-gold/10',
-        copied && 'border-emerald-400/60 text-emerald-200',
+        copied && 'border-emerald-400/60 text-emerald-800',
         className,
       )}
     >
@@ -106,18 +106,18 @@ export function SectionHeading({ eyebrow, title, intro, align = 'center' }: { ey
   return (
     <Reveal className={cn('mb-12 max-w-3xl md:mb-16', align === 'center' && 'mx-auto text-center')}>
       <p className="eyebrow">{eyebrow}</p>
-      <h2 className="mt-4 text-4xl font-semibold leading-[1.05] text-cream md:text-6xl">{title}</h2>
-      {intro && <p className="mt-5 text-base leading-relaxed text-cream/65 md:text-lg">{intro}</p>}
+      <h2 className="mt-4 text-4xl font-semibold leading-[1.05] text-fg md:text-6xl">{title}</h2>
+      {intro && <p className="mt-5 text-base leading-relaxed text-fg/65 md:text-lg">{intro}</p>}
     </Reveal>
   );
 }
 
 export function EmptyState({ icon, title, children, className }: { icon?: ReactNode; title: string; children?: ReactNode; className?: string }) {
   return (
-    <div className={cn('flex flex-col items-center rounded-3xl border border-dashed border-gold/20 bg-ink-800/40 px-6 py-14 text-center', className)}>
+    <div className={cn('flex flex-col items-center rounded-3xl border border-dashed border-gold/20 bg-paper-soft/40 px-6 py-14 text-center', className)}>
       {icon && <div className="mb-4 text-gold/70">{icon}</div>}
-      <p className="font-display text-2xl text-cream">{title}</p>
-      {children && <div className="mt-2 max-w-md text-sm text-cream/55">{children}</div>}
+      <p className="font-display text-2xl text-fg">{title}</p>
+      {children && <div className="mt-2 max-w-md text-sm text-fg/55">{children}</div>}
     </div>
   );
 }

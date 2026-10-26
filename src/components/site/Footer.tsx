@@ -20,9 +20,9 @@ export function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="relative border-t border-gold/10 bg-ink-900 pt-20">
+    <footer className="relative border-t border-gold/10 bg-paper pt-20">
       <div className="container">
-        <p className="mx-auto max-w-3xl text-center font-display text-3xl leading-tight text-cream md:text-5xl">
+        <p className="mx-auto max-w-3xl text-center font-display text-3xl leading-tight text-fg md:text-5xl">
           {s.closing_message.split('. ').map((part, i, arr) => (
             <span key={i} className={i === arr.length - 1 ? 'text-gold-metal' : undefined}>
               {part}
@@ -34,10 +34,10 @@ export function Footer() {
         <div className="grid gap-10 py-14 md:grid-cols-3">
           <div>
             <Logo />
-            <p className="mt-4 max-w-xs text-sm text-cream/55">{s.subtitle}</p>
-            <p className="mt-2 text-sm text-cream/40">{s.group_name}</p>
+            <p className="mt-4 max-w-xs text-sm text-fg/55">{s.subtitle}</p>
+            <p className="mt-2 text-sm text-fg/40">{s.group_name}</p>
           </div>
-          <div className="space-y-3 text-sm text-cream/65">
+          <div className="space-y-3 text-sm text-fg/65">
             <p className="eyebrow mb-4">Informações</p>
             <p>{formatEventDate(s.starts_at)} · {formatEventTime(s.starts_at)}</p>
             <a href={s.maps_url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 hover:text-gold-light">
@@ -70,16 +70,16 @@ export function Footer() {
                 })}
               </ul>
             ) : (
-              <p className="text-sm text-cream/40">As redes sociais oficiais serão anunciadas em breve.</p>
+              <p className="text-sm text-fg/40">As redes sociais oficiais serão anunciadas em breve.</p>
             )}
             <ul className="mt-6 space-y-2 text-sm">
-              <li><Link to="/consultar" className="text-cream/65 hover:text-gold-light">Consultar o meu pedido</Link></li>
-              <li><Link to="/privacidade" className="text-cream/65 hover:text-gold-light">Política de privacidade</Link></li>
-              <li><Link to="/termos" className="text-cream/65 hover:text-gold-light">Termos e condições</Link></li>
+              <li><Link to="/consultar" className="text-fg/65 hover:text-gold-light">Consultar o meu pedido</Link></li>
+              <li><Link to="/privacidade" className="text-fg/65 hover:text-gold-light">Política de privacidade</Link></li>
+              <li><Link to="/termos" className="text-fg/65 hover:text-gold-light">Termos e condições</Link></li>
             </ul>
           </div>
         </div>
-        <div className="flex flex-col gap-2 border-t border-white/5 py-6 text-xs text-cream/40 md:flex-row md:justify-between">
+        <div className="flex flex-col gap-2 border-t border-fg/5 py-6 text-xs text-fg/40 md:flex-row md:justify-between">
           <p>{s.copyright_text || `© ${year} ${s.group_name}. Todos os direitos reservados.`}</p>
           {s.credits_text && <p>{s.credits_text}</p>}
         </div>

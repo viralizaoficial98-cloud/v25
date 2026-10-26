@@ -56,7 +56,7 @@ export function Group() {
               ) : (
                 <img src={it.src} alt={it.alt} loading="lazy" width={it.w ?? undefined} height={it.h ?? undefined} className="w-full transition duration-700 group-hover:scale-[1.03]" />
               )}
-              <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-ink/70 via-transparent opacity-0 transition group-hover:opacity-100" />
+              <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-paper/70 via-transparent opacity-0 transition group-hover:opacity-100" />
               <Expand aria-hidden className="absolute bottom-4 right-4 h-5 w-5 text-gold-light opacity-0 transition group-hover:opacity-100" />
             </motion.button>
           ))}
@@ -71,20 +71,20 @@ export function Group() {
               .filter((g) => g.list.length)
               .map((g) => (
                 <div key={g.title}>
-                  <h3 className="mb-6 text-center font-display text-3xl text-cream">{g.title}</h3>
+                  <h3 className="mb-6 text-center font-display text-3xl text-fg">{g.title}</h3>
                   <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
                     {g.list.map((m) => (
                       <li key={m.id} className="glass rounded-2xl p-4 text-center">
                         {m.photo_path ? (
                           <img src={mediaUrl(m.photo_path) ?? ''} alt={m.name} loading="lazy" className="mx-auto aspect-square w-24 rounded-full object-cover object-top ring-2 ring-gold/40" />
                         ) : (
-                          <span className="mx-auto flex aspect-square w-24 items-center justify-center rounded-full bg-ink-700 ring-2 ring-gold/20">
+                          <span className="mx-auto flex aspect-square w-24 items-center justify-center rounded-full bg-paper-muted ring-2 ring-gold/20">
                             <UserRound className="h-10 w-10 text-gold/50" aria-hidden />
                           </span>
                         )}
-                        <p className="mt-3 font-display text-lg text-cream">{m.name}</p>
+                        <p className="mt-3 font-display text-lg text-fg">{m.name}</p>
                         {m.voice && <p className="text-xs uppercase tracking-[0.18em] text-gold">{m.voice}</p>}
-                        {m.period_label && <p className="mt-1 text-xs text-cream/50">{m.period_label}</p>}
+                        {m.period_label && <p className="mt-1 text-xs text-fg/50">{m.period_label}</p>}
                       </li>
                     ))}
                   </ul>

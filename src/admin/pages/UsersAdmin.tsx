@@ -75,7 +75,7 @@ export default function UsersAdmin() {
             <div>
               <Label htmlFor="up">Palavra-passe inicial (opcional)</Label>
               <input id="up" type="password" autoComplete="new-password" className="admin-input" value={password} onChange={(e) => setPassword(e.target.value)} />
-              <p className="mt-1 text-xs text-cream/45">Vazio = envia convite por email (válido 72 h). Mínimo 10 caracteres com letras e números.</p>
+              <p className="mt-1 text-xs text-fg/45">Vazio = envia convite por email (válido 72 h). Mínimo 10 caracteres com letras e números.</p>
             </div>
             <Button type="submit" size="sm" loading={busy}><UserPlus className="h-4 w-4" /> Criar</Button>
           </form>
@@ -83,7 +83,7 @@ export default function UsersAdmin() {
         <Panel title="Perfis disponíveis">
           <dl className="space-y-3 text-sm">
             {(Object.keys(PERMS) as StaffRole[]).map((r) => (
-              <div key={r}><dt className="font-semibold text-gold-light">{ROLE_LABEL[r]}</dt><dd className="text-cream/60">{PERMS[r]}</dd></div>
+              <div key={r}><dt className="font-semibold text-gold-light">{ROLE_LABEL[r]}</dt><dd className="text-fg/60">{PERMS[r]}</dd></div>
             ))}
           </dl>
         </Panel>
@@ -95,7 +95,7 @@ export default function UsersAdmin() {
               const self = s.user_id === user?.id;
               return (
                 <tr key={s.user_id}>
-                  <Td>{s.full_name || '—'}<span className="block text-xs text-cream/50">{s.email}</span></Td>
+                  <Td>{s.full_name || '—'}<span className="block text-xs text-fg/50">{s.email}</span></Td>
                   <Td>
                     <select
                       className="admin-input w-auto"

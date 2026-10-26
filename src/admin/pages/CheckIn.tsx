@@ -10,11 +10,11 @@ import type { CheckinResult } from '@/lib/types';
 import { PageHeader, Panel, Toggle } from '../ui';
 
 const RESULT_UI: Record<CheckinResult['result'], { title: string; cls: string; icon: typeof CheckCircle2 }> = {
-  ok: { title: 'ENTRADA VALIDADA', cls: 'border-emerald-400/60 bg-emerald-500/15 text-emerald-100', icon: CheckCircle2 },
-  valido: { title: 'INGRESSO VÁLIDO (não registado)', cls: 'border-sky-400/60 bg-sky-500/15 text-sky-100', icon: CheckCircle2 },
-  ja_utilizado: { title: 'JÁ UTILIZADO', cls: 'border-amber-400/70 bg-amber-500/15 text-amber-100', icon: ShieldAlert },
-  anulado: { title: 'INGRESSO ANULADO', cls: 'border-rose-400/70 bg-rose-500/15 text-rose-100', icon: XCircle },
-  invalido: { title: 'INVÁLIDO', cls: 'border-rose-400/70 bg-rose-500/15 text-rose-100', icon: XCircle },
+  ok: { title: 'ENTRADA VALIDADA', cls: 'border-emerald-400/60 bg-emerald-500/15 text-emerald-800', icon: CheckCircle2 },
+  valido: { title: 'INGRESSO VÁLIDO (não registado)', cls: 'border-sky-400/60 bg-sky-500/15 text-sky-800', icon: CheckCircle2 },
+  ja_utilizado: { title: 'JÁ UTILIZADO', cls: 'border-amber-400/70 bg-amber-500/15 text-amber-800', icon: ShieldAlert },
+  anulado: { title: 'INGRESSO ANULADO', cls: 'border-rose-400/70 bg-rose-500/15 text-rose-800', icon: XCircle },
+  invalido: { title: 'INVÁLIDO', cls: 'border-rose-400/70 bg-rose-500/15 text-rose-800', icon: XCircle },
 };
 
 export default function CheckIn() {
@@ -115,7 +115,7 @@ export default function CheckIn() {
           <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-black">
             <video ref={video} playsInline muted className={cn('h-full w-full object-cover', !camera && 'hidden')} />
             {!camera && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-cream/50">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-fg/50">
                 <Camera className="h-10 w-10" />
                 <p className="text-sm">Câmara desligada</p>
               </div>
@@ -135,7 +135,7 @@ export default function CheckIn() {
           <form onSubmit={submitManual} className="mt-5 flex gap-2">
             <label htmlFor="manual" className="sr-only">Código do ingresso</label>
             <div className="relative flex-1">
-              <Keyboard className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-cream/40" />
+              <Keyboard className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-fg/40" />
               <input id="manual" className="admin-input pl-9 font-mono uppercase" placeholder="T-XXXXXXXX" value={manual} onChange={(e) => setManual(e.target.value)} autoComplete="off" />
             </div>
             <Button type="submit" variant="outline">Validar</Button>
@@ -163,7 +163,7 @@ export default function CheckIn() {
               )}
             </div>
           ) : (
-            <Panel><p className="text-sm text-cream/50">Aguardando leitura…</p></Panel>
+            <Panel><p className="text-sm text-fg/50">Aguardando leitura…</p></Panel>
           )}
           {history.length > 0 && (
             <Panel title="Últimas leituras (esta sessão)">
@@ -172,7 +172,7 @@ export default function CheckIn() {
                   <li key={i} className="flex justify-between gap-2">
                     <span className="font-mono">{h.ticket_code ?? '—'}</span>
                     <span>{RESULT_UI[h.result].title}</span>
-                    <span className="text-cream/45">{formatDateTime(h.at, { day: undefined, month: undefined, year: undefined, second: '2-digit' })}</span>
+                    <span className="text-fg/45">{formatDateTime(h.at, { day: undefined, month: undefined, year: undefined, second: '2-digit' })}</span>
                   </li>
                 ))}
               </ul>

@@ -2,15 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+/* V25 — White Premium. Valores RGB para permitir opacidade (ex.: text-fg/60). */
+:root {
+  color-scheme: light;
+  --paper: 255 255 255;          /* fundo principal #FFFFFF */
+  --paper-soft: 250 248 244;     /* superfícies secundárias off-white */
+  --paper-muted: 244 240 233;    /* campos, fundos subtis */
+  --paper-strong: 233 225 211;
+  --fg: 23 19 15;                /* texto principal (quase preto) */
+  --fg-muted: 95 86 75;
+  --gold: 138 101 39;            /* dourado para texto/ícones (contraste AA em branco) */
+  --gold-light: 122 85 32;       /* hover/realce de texto */
+  --gold-deep: 110 74 28;
+  --gold-bright: 201 164 92;     /* dourado original, para superfícies e detalhes */
+  --gold-pale: 243 231 207;
+  --espresso: 247 241 230;       /* tom quente para cartões */
+}
+
 @layer base {
-  :root { color-scheme: dark; }
   html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
   body {
-    @apply bg-ink text-cream font-sans antialiased;
+    @apply bg-paper text-fg font-sans antialiased;
     text-rendering: optimizeLegibility;
   }
-  ::selection { background: rgba(201, 164, 92, 0.35); color: #fff; }
-  :focus-visible { outline: 2px solid #e8cf8e; outline-offset: 3px; border-radius: 4px; }
+  ::selection { background: rgba(201, 164, 92, 0.3); color: #17130f; }
+  :focus-visible { outline: 2px solid rgb(var(--gold)); outline-offset: 3px; border-radius: 4px; }
   h1, h2, h3 { @apply font-display; letter-spacing: -0.01em; }
   [id] { scroll-margin-top: 5.5rem; }
   @media (prefers-reduced-motion: reduce) {
@@ -24,16 +40,14 @@
     @apply bg-gold-metal bg-clip-text text-transparent;
     background-size: 200% auto;
   }
-  .eyebrow { @apply text-[0.7rem] font-semibold uppercase tracking-[0.32em] text-gold; }
+  .eyebrow { @apply text-[0.7rem] font-bold uppercase tracking-[0.32em] text-gold; }
   .section { @apply relative py-20 md:py-28; }
-  .hairline { @apply h-px w-full bg-gradient-to-r from-transparent via-gold/40 to-transparent; }
-  .glass { @apply border border-gold/15 bg-ink-800/70 backdrop-blur-md; }
-  .grain::after {
-    content: '';
-    position: absolute; inset: 0; pointer-events: none; opacity: .06; mix-blend-mode: overlay;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  }
+  .hairline { @apply h-px w-full bg-gradient-to-r from-transparent via-gold-bright/50 to-transparent; }
+  /* Cartão branco com sombra suave e borda delicada */
+  .glass { @apply border border-fg/[0.07] bg-paper shadow-soft; }
+  .card { @apply rounded-[1.5rem] border border-fg/[0.07] bg-paper shadow-card; }
+  .grain::after { content: none; }
   .admin-input {
-    @apply w-full rounded-lg border border-white/10 bg-ink-700 px-3 py-2 text-sm text-cream placeholder:text-cream/30 focus:border-gold/60 focus:outline-none focus:ring-1 focus:ring-gold/40;
+    @apply w-full rounded-lg border border-fg/15 bg-paper px-3 py-2 text-sm text-fg placeholder:text-fg/35 focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold-bright/30;
   }
 }

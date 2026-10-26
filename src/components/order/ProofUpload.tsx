@@ -48,10 +48,10 @@ export function ProofUpload({ code, token, onUploaded }: { code: string; token: 
   };
 
   return (
-    <div className="rounded-[1.75rem] border border-white/10 bg-ink-800/70 p-6 md:p-8">
+    <div className="rounded-[1.75rem] border border-fg/10 bg-paper-soft/70 p-6 md:p-8">
       <p className="eyebrow">Passo seguinte</p>
       <h3 className="mt-2 text-3xl font-semibold">Carregar comprovativo</h3>
-      <p className="mt-2 text-sm text-cream/60">Depois de fazer a transferência, envie o comprovativo em PDF, JPG ou PNG (máx. 5 MB).</p>
+      <p className="mt-2 text-sm text-fg/60">Depois de fazer a transferência, envie o comprovativo em PDF, JPG ou PNG (máx. 5 MB).</p>
 
       <div
         onDragOver={(e) => {
@@ -71,11 +71,11 @@ export function ProofUpload({ code, token, onUploaded }: { code: string; token: 
       >
         <FileUp className="h-9 w-9 text-gold" aria-hidden />
         {file ? (
-          <p className="mt-3 text-sm text-cream">
-            <span className="font-semibold">{file.name}</span> <span className="text-cream/50">· {formatBytes(file.size)}</span>
+          <p className="mt-3 text-sm text-fg">
+            <span className="font-semibold">{file.name}</span> <span className="text-fg/50">· {formatBytes(file.size)}</span>
           </p>
         ) : (
-          <p className="mt-3 text-sm text-cream/60">Arraste o ficheiro para aqui ou</p>
+          <p className="mt-3 text-sm text-fg/60">Arraste o ficheiro para aqui ou</p>
         )}
         <Button variant="outline" size="sm" className="mt-4" onClick={() => input.current?.click()}>
           {file ? 'Escolher outro ficheiro' : 'Escolher ficheiro'}
@@ -98,7 +98,7 @@ export function ProofUpload({ code, token, onUploaded }: { code: string; token: 
       <Button size="lg" className="mt-6 w-full" disabled={!file} loading={busy} onClick={submit}>
         Enviar comprovativo
       </Button>
-      <p className="mt-4 flex items-start gap-2 text-xs text-cream/50">
+      <p className="mt-4 flex items-start gap-2 text-xs text-fg/50">
         <ShieldCheck className="h-4 w-4 shrink-0 text-gold" aria-hidden />
         O ficheiro é guardado de forma privada e apenas a equipa financeira o pode consultar. O envio do comprovativo não confirma o pagamento: a confirmação é feita manualmente após verificação bancária.
       </p>

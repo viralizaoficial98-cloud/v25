@@ -82,7 +82,7 @@ export default function MediaAdmin() {
       </div>
       <div className="mb-4 grid gap-4 lg:grid-cols-2">
         <Panel title="Carregar ficheiros">
-          <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gold/25 px-4 py-8 text-center text-sm text-cream/60 hover:border-gold/60">
+          <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gold/25 px-4 py-8 text-center text-sm text-fg/60 hover:border-gold/60">
             <Upload className="mb-2 h-6 w-6 text-gold" />
             Fotografias (JPG, PNG, WebP) ou vídeos curtos (MP4/WebM, máx. 50 MB — confirme o limite de upload do PHP no cPanel)
             <input type="file" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" className="sr-only" onChange={(e) => { void upload(e.target.files); e.target.value = ''; }} />
@@ -102,7 +102,7 @@ export default function MediaAdmin() {
         <Loadable loading={loading} error={error} empty={data.length === 0 ? 'Sem itens nesta secção.' : false}>
           <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {data.map((m) => (
-              <li key={m.id} className="overflow-hidden rounded-xl border border-white/10 bg-ink-700">
+              <li key={m.id} className="overflow-hidden rounded-xl border border-fg/10 bg-paper-muted">
                 <div className="flex aspect-video items-center justify-center bg-black">
                   {m.kind === 'youtube' ? (
                     <img src={`https://i.ytimg.com/vi/${m.youtube_id}/mqdefault.jpg`} alt="" className="h-full w-full object-contain" />

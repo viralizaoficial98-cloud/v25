@@ -31,12 +31,12 @@ export default function AuditLog() {
                   <button type="button" className="text-xs text-gold-light underline" onClick={() => setOpen(open === e.id ? null : e.id)}>
                     {open === e.id ? 'Ocultar' : 'Ver'}
                   </button>
-                  {open === e.id && <pre className="mt-2 max-h-64 max-w-xl overflow-auto rounded-lg bg-black/40 p-2 text-[11px] text-cream/70">{JSON.stringify(e.details, null, 2)}</pre>}
+                  {open === e.id && <pre className="mt-2 max-h-64 max-w-xl overflow-auto rounded-lg bg-black/40 p-2 text-[11px] text-fg/70">{JSON.stringify(e.details, null, 2)}</pre>}
                 </Td>
               </tr>
             ))}
           </Table>
-          <div className="mt-4 flex items-center justify-end gap-2 text-xs text-cream/50">
+          <div className="mt-4 flex items-center justify-end gap-2 text-xs text-fg/50">
             <Button size="icon" variant="ghost" aria-label="Anterior" disabled={page === 0} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
             Página {page + 1} de {pages}
             <Button size="icon" variant="ghost" aria-label="Seguinte" disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}><ChevronRight className="h-4 w-4" /></Button>

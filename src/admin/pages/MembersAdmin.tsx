@@ -23,7 +23,7 @@ export default function MembersAdmin() {
           {typeof r.photo_path === 'string' && r.photo_path && <img src={mediaUrl(r.photo_path) ?? ''} alt="" className="h-10 w-10 rounded-full object-cover" />}
           <div>
             <p className="font-semibold">{String(r.name)}</p>
-            <p className="text-xs text-cream/50">{[r.voice, r.is_current ? 'Actual' : 'Antigo membro', r.period_label].filter(Boolean).join(' · ')}</p>
+            <p className="text-xs text-fg/50">{[r.voice, r.is_current ? 'Actual' : 'Antigo membro', r.period_label].filter(Boolean).join(' · ')}</p>
           </div>
         </div>
       )}

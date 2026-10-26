@@ -50,6 +50,12 @@ export interface PublicTicketType {
   lot_label: string;
   description: string;
   price_kz: number | null;
+  /** directo = compra no checkout; consulta = VIP por proposta da organização */
+  sale_mode: 'directo' | 'consulta';
+  benefits: string[];
+  badge: string;
+  /** false enquanto o administrador não definir a quantidade disponível */
+  stock_defined: boolean;
   available: number;
   quantity_total: number;
   max_per_order: number;
@@ -60,7 +66,7 @@ export interface PublicTicketType {
   sales_end: string | null;
 }
 
-export interface TicketTypeRow extends Omit<PublicTicketType, 'available' | 'on_sale'> {
+export interface TicketTypeRow extends Omit<PublicTicketType, 'available' | 'on_sale' | 'stock_defined'> {
   quantity_reserved: number;
   quantity_sold: number;
   published: boolean;
@@ -86,9 +92,15 @@ export interface OrderTicket {
   checked_in_at: string | null;
 }
 
+export type PaymentMethod = 'transferencia' | 'express';
+
 export interface CustomerOrder {
   order_code: string;
   status: OrderStatus;
+  source: 'checkout' | 'vip';
+  payment_method: PaymentMethod | null;
+  proof_uploaded_at: string | null;
+  event: { name: string; starts_at: string | null; venue: string; address: string };
   full_name: string;
   email_masked: string;
   phone_masked: string;
@@ -188,4 +200,72 @@ export interface CheckinResult {
   persons_per_ticket?: number;
   checked_in_at?: string | null;
   checked_in_by?: string | null;
+}
+
+// ---------------------------------------------------------------- CMS
+export interface SiteLink {
+  label: string;
+  href: string;
+}
+export interface SiteSection<T = Record<string, unknown>> {
+  key: string;
+  enabled: boolean;
+  sort_order: number;
+  data: T;
+}
+
+// ---------------------------------------------------------------- Galeria dos eventos
+export interface GalleryItem {
+  id: string;
+  kind: 'foto' | 'video' | 'video_url';
+  path: string | null;
+  thumb_path: string | null;
+  video_url: string | null;
+  embed_url: string | null;
+  width: number | null;
+  height: number | null;
+  caption: string;
+  alt_text: string;
+  sort_order: number;
+}
+export interface GalleryAlbum {
+  id: string;
+  title: string;
+  slug: string;
+  category: string;
+  event_date: string | null;
+  year: number | null;
+  location: string;
+  description: string;
+  cover: GalleryItem | null;
+  cover_item_id: string | null;
+  photos: number;
+  videos: number;
+  published?: boolean;
+  sort_order?: number;
+}
+
+// ---------------------------------------------------------------- VIP
+export type VipStatus = 'nova' | 'em_analise' | 'proposta_enviada' | 'aceite' | 'recusada_cliente' | 'rejeitada' | 'cancelada';
+export interface VipProposal {
+  id: string;
+  tickets: number;
+  total_kz: number;
+  conditions: string;
+  valid_until: string;
+  status: 'enviada' | 'aceite' | 'recusada' | 'expirada' | 'substituida';
+  created_at: string;
+  responded_at: string | null;
+  order_code: string | null;
+}
+export interface VipCustomerView {
+  request_code: string;
+  status: VipStatus;
+  status_reason: string | null;
+  full_name: string;
+  email_masked: string;
+  participants: number;
+  message: string | null;
+  created_at: string;
+  proposal: VipProposal | null;
 }
