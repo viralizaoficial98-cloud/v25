@@ -23,7 +23,7 @@
 - Todo o conteúdo editável passa a viver no MySQL, com rascunho, publicação, pré-visualização e histórico.
 - Testes antes de publicar: API, E2E, Apache e **ensaio de actualização** a partir de uma base com dados.
 
-## 3. Migração `003_v2_cms_gallery_vip.sql`
+## 3. Migração `003_v2_checkout_vip_cms_gallery.sql`
 
 | Alteração | Tipo |
 |---|---|
@@ -47,3 +47,8 @@ Inclui `database/rollback/003_down.sql` para reverter apenas o que a 003 acresce
 3. Frontend: tema White Premium por tokens (sem alterar estrutura), Hero com fotografia oficial, secções a partir do CMS, checkout em 5 etapas, VIP, Galeria dos Eventos, painel com Gestão do Website, Galeria, VIP.
 4. Testes: API (novos fluxos), E2E (Normal, Premium, VIP, CMS, galeria), Apache, ensaio de actualização 002→003 com dados.
 5. Documentação: actualização em produção (backup, staging, deploy, migração, rollback).
+
+## 6. Estado
+
+Implementado e testado (ver [RELATORIO_TESTES.md](RELATORIO_TESTES.md)). Publicação: [ACTUALIZACAO_V2.md](ACTUALIZACAO_V2.md).
+O ficheiro da migração chama-se `003_v2_checkout_vip_cms_gallery.sql`.

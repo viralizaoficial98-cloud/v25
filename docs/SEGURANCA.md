@@ -75,3 +75,14 @@ Estado de cada controlo: ✅ implementado e testado · 🔧 depende de configura
 - ✅ `audit_logs`: login/logout, aprovações, rejeições, cancelamentos, ligações geradas, consulta de comprovativos, preços, configurações, equipa, conteúdos, exportações.
 - ✅ Logs da aplicação em `storage/logs` (privado), sem palavras-passe nem tokens.
 - ✅ A lista da fila de emails no painel não expõe o conteúdo (tokens); tokens de recuperação são apagados após o envio.
+
+## Versão 2
+
+- Dados bancários retirados de `/api/public/settings`; só aparecem no pedido do próprio cliente (token) e no painel (`settings.manage`).
+- VIP: nenhum preço público e nenhuma cobrança sem proposta enviada pela organização **e** aceite pelo cliente; o valor do pedido VIP vem sempre da proposta guardada no servidor; acesso do cliente por token (`X-Vip-Token`, só o hash na BD); limites por IP e por email.
+- Checkout: o total é sempre recalculado no servidor a partir do preço em vigor (preços enviados pelo cliente são ignorados); o comprovativo nunca confirma pagamento.
+- CMS: todos os campos são validados por esquema no servidor; texto simples (o React escapa tudo, sem `dangerouslySetInnerHTML`); ligações só `https?://`, `/`, `#âncora`, `mailto:` e `tel:` (validadas no servidor e no browser); imagens só caminhos gerados pelo próprio upload; pré-visualização de rascunhos exige sessão com `site.manage`; todas as alterações ficam em `site_revisions` e na auditoria.
+- Galeria: imagens re-codificadas com GD (remove metadados/código embebido, corrige orientação), tipo verificado pelos bytes, limites 15 MB (foto) / 50 MB (vídeo MP4/WebM), 500 itens por álbum; vídeos externos só YouTube (`youtube-nocookie`) e Vimeo, também restringidos na CSP (`frame-src`).
+- Novas permissões `site.manage`, `gallery.manage`, `vip.manage` (só administrador por omissão; editáveis em `role_permissions`).
+- Operações destrutivas no painel (publicar, ocultar secções, eliminar álbuns/itens, rejeitar VIP, restaurar versões) exigem confirmação explícita.
+- Dependências: `npm audit` sem vulnerabilidades após actualizar jsPDF 4 (DOMPurify), react-router 7 e zod 4, com compatibilidade verificada por testes (sem `npm audit fix --force`).

@@ -36,6 +36,18 @@ forem feitos, a plataforma mostra estados honestos (vendas fechadas, emails “p
 | 22 | Capacidade total do evento (opcional) e prazo de reserva (48 h por omissão) | Evento e conteúdos |
 | 23 | Teste completo em produção e só depois **abrir as vendas** | Ingressos, lotes e stock |
 
+## Versão 2 (após a actualização)
+
+| # | Item | Página |
+|---|---|---|
+| 24 | Definir as **quantidades** de Normal, Premium e VIP (ficam a 0 = “Disponibilidade a anunciar”) | Ingressos, lotes e stock |
+| 25 | Se já existia uma categoria “Normal”/“Premium” na v1, confirmar o preço (a migração não altera categorias existentes) | Ingressos, lotes e stock |
+| 26 | **Aprovação da organização** para mostrar o logótipo Renew no rodapé (se não aprovado: desligar “Mostrar logótipo da organização”) | Gestão do Website → Rodapé |
+| 27 | Confirmar o número Express `920000000` antes de abrir as vendas | Evento e conteúdos |
+| 28 | Criar os álbuns da Galeria dos Eventos (fotografias autorizadas, legendas, texto alternativo) | Galeria dos Eventos |
+| 29 | Rever textos, imagem do Hero e SEO; publicar | Gestão do Website |
+| 30 | Email de contacto preenchido (recebe o aviso de cada nova solicitação VIP) | Evento e conteúdos |
+
 ## Opcional / recomendado
 
 - Testar a leitura de QR pela câmara nos telemóveis que serão usados à entrada (exige HTTPS).

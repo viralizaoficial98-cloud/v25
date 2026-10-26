@@ -3,9 +3,10 @@
 Plataforma oficial do evento de celebração dos **25 anos do Vibes – Grupo Vocal**
 — 20 de Dezembro de 2026, 16h00, Hotel Brisa Tropical, Morro Bento, Luanda.
 
-Divulgação do evento, inscrição, pagamento manual por transferência bancária ou
-Transferência Express, validação de comprovativos pela equipa financeira, ingressos digitais
-com QR Code assinado (PDF e email), check-in com bloqueio de reutilização e painel administrativo.
+Site White Premium gerido por CMS, checkout em 5 etapas (Normal e Premium), acesso VIP por
+proposta da organização, pagamento manual por transferência bancária ou Transferência Express,
+validação de comprovativos pela equipa financeira, ingressos digitais com QR Code assinado (PDF e
+email), check-in com bloqueio de reutilização, Galeria dos Eventos e painel administrativo.
 
 Alojamento: **cPanel da Renew Angola** (`renewangola.online`) com **PHP + MySQL** — sem Node.js
 no servidor. (Migrado de Supabase: ver [`docs/MIGRACAO_SUPABASE_MYSQL.md`](docs/MIGRACAO_SUPABASE_MYSQL.md).)
@@ -22,7 +23,7 @@ no servidor. (Migrado de Supabase: ver [`docs/MIGRACAO_SUPABASE_MYSQL.md`](docs/
 ## Estrutura
 
 ```
-src/                    Frontend (inalterado no design)
+src/                    Frontend (React; tema White Premium por tokens em index.css)
   lib/http.ts           Cliente da API (CSRF, erros)
   lib/api.ts            Chamadas públicas (pedidos, comprovativos, PDF)
   admin/                Painel /admin (sessão, permissões, páginas)
@@ -60,6 +61,7 @@ npm run dev                     # Vite com proxy /api → 8080 (terminal 2)
 npm test            # frontend (Vitest)
 npm run test:api    # API PHP + MySQL/MariaDB reais (cria uma BD temporária)
 npm run test:e2e    # fluxo completo pela interface (build + API + BD + Chromium)
+npm run test:upgrade # ensaio da actualização v1 → v2 numa BD temporária com dados
 npm run typecheck
 ```
 
@@ -68,6 +70,11 @@ npm run typecheck
 Resultados: [`docs/RELATORIO_TESTES.md`](docs/RELATORIO_TESTES.md).
 
 ## Deploy no cPanel
+
+**Actualizar a instalação existente (v1 → v2): seguir [`docs/ACTUALIZACAO_V2.md`](docs/ACTUALIZACAO_V2.md)**
+(backup, staging, pacotes `deploy/actualizacao-v2/`, só a migração 003, rollback). Não reimportar o esquema.
+
+Instalação nova:
 
 ```bash
 npm ci && npm run build:deploy
@@ -82,6 +89,8 @@ Guia completo: [`docs/INSTALACAO_CPANEL.md`](docs/INSTALACAO_CPANEL.md).
 
 | Documento | Conteúdo |
 |---|---|
+| [ACTUALIZACAO_V2.md](docs/ACTUALIZACAO_V2.md) | **Actualização da produção para a v2**: backup, staging, deploy, migração 003, rollback |
+| [PLANO_V2_WHITE_PREMIUM.md](docs/PLANO_V2_WHITE_PREMIUM.md) | Análise e plano incremental da v2 |
 | [INSTALACAO_CPANEL.md](docs/INSTALACAO_CPANEL.md) | Instalação, `.env`, permissões, HTTPS, DNS, SMTP, cron, actualizações, backups |
 | [BASE_DE_DADOS.md](docs/BASE_DE_DADOS.md) | Esquema, importação, migrações, consultas, backup |
 | [SEGURANCA.md](docs/SEGURANCA.md) | Checklist de segurança |
@@ -96,4 +105,7 @@ Guia completo: [`docs/INSTALACAO_CPANEL.md`](docs/INSTALACAO_CPANEL.md).
 - Os ingressos só são emitidos depois de a equipa financeira confirmar a transferência
   (referência bancária única + valor igual ao total).
 - Cada QR Code é individual, assinado e válido para uma única entrada.
-- Sem preços publicados, o site mostra “A AGUARDAR ABERTURA DAS VENDAS”.
+- Com as vendas fechadas, o site mostra “A AGUARDAR ABERTURA DAS VENDAS”; sem quantidade definida, “Disponibilidade a anunciar”.
+- O total é sempre calculado no servidor; cada pedido guarda o preço em vigor no momento da compra.
+- VIP: sem preço público; só há cobrança depois de a organização enviar uma proposta e o cliente a aceitar.
+- Todo o conteúdo editável do site vive no MySQL (rascunho → pré-visualização → publicação, com histórico).

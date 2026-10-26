@@ -1,4 +1,94 @@
-# Relatório de testes — migração para PHP + MySQL
+# Relatório de testes
+
+## Versão 2 (White Premium, checkout em etapas, CMS, Galeria dos Eventos, VIP) — 27/10/2026
+
+Todos os resultados abaixo foram **efectivamente executados** neste ambiente (mesmo ambiente da secção da v1, mais abaixo).
+
+| Suite | Comando | Resultado |
+|---|---|---|
+| API v1 (regressão) | `npm run test:api` | **27/27** |
+| API v2 (novos fluxos) | `npm run test:api` | **16/16** |
+| Frontend (Vitest) | `npm test` | **27/27** |
+| Ponta-a-ponta (Chromium, build de produção) | `npm run test:e2e` | **15/15 etapas** |
+| Ensaio de actualização v1 → v2 | `npm run test:upgrade` | **8/8 verificações** |
+| Instalação Apache (staging local `/home/renewangola`) | pacote de actualização + `bin/migrate.php` | OK |
+| Dependências | `npm audit` | **0 vulnerabilidades** (sem `--force`) |
+| Tipos | `npm run typecheck` | OK |
+
+### API v2 (`backend/tests/api-v2.test.mjs`)
+
+1. Preparação: administrador, equipa e categorias oficiais (Normal 12 500, Premium 25 000, VIP por consulta)
+2. CMS: textos oficiais publicados; permissões (`site.manage`)
+3. CMS: rascunho invisível ao público, pré-visualização, publicação, histórico e restauro
+4. CMS: ocultar secção, reordenar, imagem do Hero (upload validado), SEO; HTML guardado como texto simples (nunca interpretado pelo site), links `javascript:` recusados
+5. Galeria: álbum, fotografias com miniatura WebP, vídeos YouTube/Vimeo (outros domínios recusados), ficheiro PHP disfarçado recusado, capa, ordem, publicação, actualização parcial sem perda de campos
+6. Stock por definir bloqueia compra; VIP nunca pode ser comprado pelo checkout
+7. Compra Normal: total calculado no backend (preços enviados pelo cliente ignorados), método de pagamento, dados bancários só no pedido
+8. Histórico de preços: alterar o preço não afecta pedidos existentes
+9. Premium por Transferência Express → aprovação manual → ingressos → check-in → reutilização bloqueada
+10. VIP: solicitação pública, duplicados e permissões
+11. VIP: proposta → aceitação → pedido com o valor aprovado → pagamento → ingressos VIP
+12. VIP: proposta expirada, recusa pelo cliente, rejeição com motivo
+13. Dashboard: vendas por categoria, VIP, check-ins, reservas expiradas, capacidade
+14. Relatórios: filtros por categoria/origem/datas; CSV VIP com permissões
+15. Emails VIP e de compra enviados por SMTP
+16. A API pública não expõe dados bancários nem rascunhos
+
+### Ponta-a-ponta (`scripts/test-e2e.mjs`, capturas em `e2e-screenshots/`)
+
+1. Landing White Premium (fundo `#FFFFFF` verificado), textos do CMS, Normal/Premium/VIP, vendas fechadas, logótipo Renew
+2. Instalação do 1.º administrador
+3. Gestão comercial: quantidades, alteração de preço com histórico, abertura das vendas
+4. CMS: rascunho invisível ao público → pré-visualização → publicação → histórico
+5. Galeria: álbum + upload múltiplo (3 fotos) → publicado → aberto no site, lightbox com navegação por teclado
+6. Equipa Financeiro e Check-in
+7. Compra **Normal** no telemóvel: seleção 2 × 12 500, dados (+244), consentimento obrigatório, resumo com “Voltar e corrigir”, pagamento Express, comprovativo → **PAGAMENTO EM ANÁLISE**; sem scroll horizontal
+8. Compra **Premium** (desktop, transferência bancária)
+9. **VIP**: solicitação (sem preço) → proposta 200 000 Kz com condições → aceitação → pedido → comprovativo
+10. Financeiro: comprovativo privado (401 sem sessão), aprovação manual Normal e VIP
+11. Ingressos individuais com QR assinado (2 Normal, 4 VIP) + PDF
+12. Check-in e bloqueio da 2.ª entrada
+13. Relatórios: CSV filtrado por origem VIP, PDF com filtros, dashboard (receita 225 000 Kz)
+14. Ingresso “Utilizado” na página do cliente
+15. Acessibilidade básica (alt, h1 único), menu móvel, sem scroll horizontal
+
+### Ensaio de actualização (`scripts/test-upgrade.mjs`)
+
+BD v1 (001 + 002) com administrador, categoria “Normal” a 15 000 Kz, pedido emitido, pagamento e ingressos →
+`bin/migrate.php` aplica **só a 003** → todos os dados existentes iguais byte a byte (utilizadores, pedidos, pagamentos,
+ingressos, configurações, FAQ, permissões) → “Normal” não duplicada nem alterada → 2.ª execução sem migrações pendentes →
+`003_down.sql` remove só o que a 003 criou (pedidos/ingressos intactos) → reaplicação OK.
+
+### Staging local (Apache 2.4 + mod_php, `/home/renewangola`, base `renewangola_v25` igual à produção)
+
+Seguido o guia `ACTUALIZACAO_V2.md`: backup (mysqldump + tar) → extracção dos zips de actualização → `migrate.php`.
+Verificado: `.env` e `api/.user.ini` com o mesmo MD5 de antes; comprovativos em `storage/proofs` e ficheiros em
+`uploads/media` preservados; pedido e ingresso v1 intactos (origem `checkout`); `/api/public/settings` sem IBAN/conta;
+`/api/.user.ini` → 403; CSP com `player.vimeo.com`; landing móvel sem erros na consola; pré-visualização recusada sem sessão.
+
+### Desempenho móvel v2 (Apache local, 390×844, CPU 4× mais lenta)
+
+| Rede | FCP | LCP | CLS | Transferido |
+|---|---|---|---|---|
+| 4G lento | 0,98 s | 1,74 s | 0,000 | 206 KB |
+| 3G rápido | 2,08 s | 2,83 s | 0,000 | 238 KB |
+
+O formulário VIP (com a biblioteca de telefones) só é carregado quando é aberto; o painel e o checkout são carregados a pedido.
+
+### Defeitos encontrados e corrigidos durante os testes v2
+
+- Actualizar só a capa de um álbum apagava categoria/local/descrição (actualização parcial) — corrigido + teste.
+- A página “Evento e conteúdos” gravaria os dados bancários vazios (deixaram de vir na API pública) — passa a ler `GET /admin/settings`.
+- Resumo do checkout e botões longos ultrapassavam a largura no telemóvel — corrigido; o E2E verifica scroll horizontal no checkout e no pagamento.
+
+### Não testado na v2
+
+Os mesmos itens da secção 7 da v1 (servidor real, MySQL 8 Oracle, HTTPS, SMTP real, câmara) e ainda:
+reprodução de vídeos do YouTube/Vimeo (sem internet neste ambiente; a validação dos URLs e o leitor incorporado estão testados).
+
+---
+
+# Versão 1 — migração para PHP + MySQL
 
 Data de execução: 25/10/2026. Todos os resultados abaixo foram **efectivamente executados**
 neste ambiente; o que não foi possível testar está identificado na secção 7.

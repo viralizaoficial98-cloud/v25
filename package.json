@@ -16,6 +16,7 @@
     "test:api": "node scripts/test-api.mjs",
     "build:schema": "node scripts/build-mysql-schema.mjs",
     "test:e2e": "node scripts/test-e2e.mjs",
+    "test:upgrade": "node scripts/test-upgrade.mjs",
     "api:dev": "php -S 127.0.0.1:8080 backend/tests/router.php",
     "build:deploy": "node scripts/build-deploy.mjs"
   },

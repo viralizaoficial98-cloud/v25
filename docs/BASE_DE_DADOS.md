@@ -1,6 +1,6 @@
 # Manual da base de dados — `renewangola_v25`
 
-MySQL 8.0+ / MariaDB 10.4+ (funciona em MySQL 5.7 / MariaDB 10.2+), motor **InnoDB**,
+MySQL 8.0.19+ / MariaDB 10.4+ (a migração 003 da v2 usa `ALTER TABLE … DROP CONSTRAINT`, que não existe em MySQL 5.7), motor **InnoDB**,
 conjunto de caracteres **utf8mb4** (`utf8mb4_unicode_ci`). Todas as datas são guardadas em
 **UTC**; a API converte para a hora de Luanda (WAT, UTC+1).
 
@@ -11,6 +11,8 @@ conjunto de caracteres **utf8mb4** (`utf8mb4_unicode_ci`). Todas as datas são g
 | `backend/app/database/v25_mysql_schema.sql` | **Instalação inicial** pelo phpMyAdmin (gerado a partir das migrações — não editar à mão) |
 | `backend/app/database/migrations/001_initial_schema.sql` | Tabelas, índices, chaves, perfis e permissões |
 | `backend/app/database/migrations/002_seed_official_data.sql` | Dados oficiais: evento, dados bancários, FAQ base (sem preços inventados) |
+| `backend/app/database/migrations/003_v2_checkout_vip_cms_gallery.sql` | v2: CMS, galeria de eventos, VIP, histórico de preços, método/origem do pedido, categorias oficiais (só se não existirem) |
+| `backend/app/database/rollback/003_down.sql` | Reverte apenas a 003 (ver `ACTUALIZACAO_V2.md`) |
 | `backend/app/bin/migrate.php` | Aplica migrações pendentes (`--status` para listar) |
 | `scripts/build-mysql-schema.mjs` | Regenera o ficheiro de instalação a partir das migrações |
 
@@ -18,6 +20,8 @@ Não há triggers, procedimentos nem eventos: o import funciona com os privilég
 de um utilizador cPanel.
 
 ## Instalação
+
+**Só para instalações novas.** Para actualizar a base já instalada use [`ACTUALIZACAO_V2.md`](ACTUALIZACAO_V2.md) — nunca reimportar este ficheiro.
 
 **phpMyAdmin:** seleccionar `renewangola_v25` → Importar → `v25_mysql_schema.sql` → Executar.
 
@@ -59,6 +63,15 @@ para migrações). Credenciais apenas em `v25_app/.env`.
 | `email_outbox` | Fila de emails | estado, tentativas, último erro; `dedupe_key` evita duplicados |
 | `rate_limits` | Limites de tentativas | limpo automaticamente |
 | `schema_migrations` | Migrações aplicadas | |
+| `ticket_categories` (v2) | + `sale_mode` (`directo`/`consulta`), `benefits` (JSON), `badge` | categoria “por consulta” pode ser publicada sem preço |
+| `orders` (v2) | + `payment_method`, `source` (`checkout`/`vip`), `expired_at` | |
+| `ticket_price_history` | Alterações de preço (antes/depois, quem, quando) | os pedidos guardam o preço da compra em `order_items` |
+| `vip_requests` | Solicitações VIP | código `VIP-XXXXXX`; estado; notas internas; IP em hash |
+| `vip_access_tokens` | Acesso do cliente à solicitação | só hash SHA-256 |
+| `vip_proposals` | Propostas (ingressos, valor total aprovado, condições, validade, estado, pedido criado) | só uma proposta “enviada” de cada vez |
+| `site_sections` | Secções do site (rascunho e publicado em JSON, ordem, visibilidade) | conteúdo validado por esquema no servidor |
+| `site_revisions` | Histórico de alterações do CMS | restauro como rascunho |
+| `gallery_albums`, `gallery_items` | Galeria dos eventos | ficheiros em `uploads/media/galeria` (WebP + miniatura `-t`); vídeos YouTube/Vimeo por URL |
 
 ### Estados do pedido
 
@@ -92,11 +105,11 @@ FROM tickets WHERE status = 'utilizado' GROUP BY hora;
 
 ## Migrações futuras
 
-1. Criar `database/migrations/003_descricao.sql` (apenas instruções aditivas/compatíveis;
+1. Criar `database/migrations/004_descricao.sql` (apenas instruções aditivas/compatíveis;
    sem `DROP` de dados).
 2. `npm run build:schema` para actualizar o ficheiro de instalação.
 3. Em produção: backup → `php bin/migrate.php` (ou importar só o ficheiro novo no phpMyAdmin e
-   registar `INSERT INTO schema_migrations (version) VALUES ('003_descricao');`).
+   registar `INSERT INTO schema_migrations (version) VALUES ('004_descricao');`).
 
 ## Backup e restauro
 

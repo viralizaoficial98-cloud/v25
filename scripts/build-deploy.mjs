@@ -4,7 +4,7 @@
 //   deploy/*.zip         → os mesmos conteúdos comprimidos (carregar e "Extrair" no Gestor de Ficheiros)
 // Requer: node, composer (para as bibliotecas PHP), zip.
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 
 const run = (cmd, args, opts = {}) => {
   const r = spawnSync(cmd, args, { stdio: 'inherit', ...opts });
@@ -53,7 +53,31 @@ for (const pkg of ['phpmailer/phpmailer', 'chillerlan/php-qrcode', 'chillerlan/p
 cpSync('backend/app/database/v25_mysql_schema.sql', 'deploy/v25_mysql_schema.sql');
 cpSync('docs/INSTALACAO_CPANEL.md', 'deploy/LEIA-ME_INSTALACAO.md');
 
-// 5) Zips
+// 5) Zips (instalação nova)
 run('zip', ['-qr', '../v25-public_html.zip', '.'], { cwd: 'deploy/public_html' });
 run('zip', ['-qr', '../v25_app.zip', '.'], { cwd: app });
-console.log('\nPacotes prontos em deploy/: v25-public_html.zip, v25_app.zip, v25_mysql_schema.sql');
+
+// 6) Pacote de ACTUALIZAÇÃO de uma instalação existente (v1 → v2).
+//    Nunca inclui: .env, storage/ (comprovativos, sessões, logs), uploads/media, api/.user.ini
+//    nem o .htaccess principal (podem ter configurações próprias do servidor).
+const up = 'deploy/actualizacao-v2';
+mkdirSync(`${up}/public_html`, { recursive: true });
+cpSync('deploy/public_html', `${up}/public_html`, {
+  recursive: true,
+  filter: (src) => !/public_html[\\/](\.htaccess|api[\\/]\.user\.ini|uploads)$/.test(src) && !/[\\/]uploads[\\/]/.test(src),
+});
+mkdirSync(`${up}/v25_app`, { recursive: true });
+cpSync(app, `${up}/v25_app`, { recursive: true, filter: (src) => !/v25_app[\\/](storage|\.env)$/.test(src) });
+// Migração 003 para importar no phpMyAdmin (só se não for possível usar bin/migrate.php)
+writeFileSync(
+  `${up}/003_actualizacao_v2_phpmyadmin.sql`,
+  readFileSync('backend/app/database/migrations/003_v2_checkout_vip_cms_gallery.sql', 'utf8') +
+    "\n-- Regista a migração (evita que bin/migrate.php a volte a aplicar)\nINSERT INTO schema_migrations (version) VALUES ('003_v2_checkout_vip_cms_gallery');\n",
+);
+cpSync('backend/app/database/rollback/003_down.sql', `${up}/003_rollback.sql`);
+cpSync('public/.htaccess', `${up}/htaccess-principal-v2.txt`);
+cpSync('docs/ACTUALIZACAO_V2.md', `${up}/LEIA-ME_ACTUALIZACAO.md`);
+run('zip', ['-qr', '../v25-actualizacao-v2-public_html.zip', '.'], { cwd: `${up}/public_html` });
+run('zip', ['-qr', '../v25-actualizacao-v2-v25_app.zip', '.'], { cwd: `${up}/v25_app` });
+console.log('\nPacotes prontos em deploy/: instalação nova (v25-public_html.zip, v25_app.zip, v25_mysql_schema.sql)');
+console.log('e actualização v1 → v2 em deploy/actualizacao-v2/ (ver LEIA-ME_ACTUALIZACAO.md)');
