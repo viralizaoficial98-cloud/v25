@@ -27,10 +27,15 @@ export interface EventSettings {
   capacity: number | null;
   reservation_hours: number;
   bank_account_name: string;
+  bank_name: string;
   bank_account_number: string;
   bank_iban: string;
   express_number: string;
   payment_instructions: string;
+  /** Coordenadas de pagamento validadas pela organização (condição para vender) */
+  payment_ready: boolean;
+  payment_confirmed_at?: string | null;
+  payment_confirmed_by?: string | null;
   contact_email: string;
   contact_phone: string;
   socials: Partial<Record<SocialNetwork, string>>;
@@ -113,7 +118,7 @@ export interface CustomerOrder {
   rejection_reason: string | null;
   cancel_reason: string | null;
   created_at: string;
-  payment: { account_name: string; account_number: string; iban: string; express_number: string; instructions: string };
+  payment: { confirmed: boolean; account_name: string; bank_name: string; account_number: string; iban: string; express_number: string; instructions: string };
   history: { status: OrderStatus; at: string }[];
   proofs: { uploaded_at: string; status: 'pendente' | 'aceite' | 'rejeitado'; mime_type: string }[];
   tickets: OrderTicket[];

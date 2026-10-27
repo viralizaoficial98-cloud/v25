@@ -16,9 +16,12 @@ final class TicketCategoryService
         $e = SettingsService::event();
         $rows = Db::all('SELECT * FROM ticket_categories WHERE event_id = :e AND published = 1 ORDER BY sort_order, price_kz IS NULL, price_kz, name', ['e' => SettingsService::EVENT_ID]);
         $now = time();
-        return array_map(static function (array $t) use ($e, $now) {
+        $paymentReady = SettingsService::paymentReady();
+        return array_map(static function (array $t) use ($e, $now, $paymentReady) {
             $consulta = ($t['sale_mode'] ?? 'directo') === 'consulta';
-            $onSale = !$consulta && (bool) $e['sales_open'] && $t['price_kz'] !== null
+            $available = (int) $t['quantity_total'] - (int) $t['quantity_reserved'] - (int) $t['quantity_sold'];
+            // Compra possível só com: vendas abertas, preço, stock real, período válido e pagamento validado
+            $onSale = !$consulta && $paymentReady && (bool) $e['sales_open'] && $t['price_kz'] !== null && $available > 0
                 && ($t['sales_start'] === null || strtotime($t['sales_start'] . ' UTC') <= $now)
                 && ($t['sales_end'] === null || strtotime($t['sales_end'] . ' UTC') > $now);
             return [

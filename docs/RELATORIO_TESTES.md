@@ -1,5 +1,23 @@
 # Relatório de testes
 
+## Versão 2.1 (logótipo no menu, compra Normal/Premium, validação dos dados bancários) — 27/10/2026
+
+| Suite | Resultado |
+|---|---|
+| `npm run typecheck`, `npm run build`, `php -l` nos ficheiros alterados | OK |
+| `npm test` (inclui novos testes do cartão de pagamento e dos botões de compra) | **33/33** |
+| `npm run test:api` | **27/27 + 17/17** |
+| `npm run test:e2e` | **15/15 etapas** |
+| `npm run test:upgrade` | **8/8** (a v2.1 não traz migrações) |
+| Cabeçalho em 390 / 768 / 1024 / 1366 px | logótipo carregado, sem overflow horizontal |
+
+Novos casos cobertos: vendas abertas sem dados de pagamento validados → sem botão e pedido recusado
+(`PAGAMENTO_POR_VALIDAR`); Financeiro não pode validar (403); validação regista quem/quando e auditoria; alterar o
+IBAN anula a validação e esconde as coordenadas dos pedidos pendentes; validação recusada com dados incompletos;
+Express vazio deixa de ser oferecido; quantidade 0 nunca mostra “Comprar”; esgotado; estado “A aguardar confirmação
+de pagamento”; logótipo do cabeçalho igual ao do rodapé (mesmo ficheiro).
+
+
 ## Versão 2 (White Premium, checkout em etapas, CMS, Galeria dos Eventos, VIP) — 27/10/2026
 
 Todos os resultados abaixo foram **efectivamente executados** neste ambiente (mesmo ambiente da secção da v1, mais abaixo).

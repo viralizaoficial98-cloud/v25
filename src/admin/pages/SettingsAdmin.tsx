@@ -8,7 +8,11 @@ import { fromLuandaInput, toLuandaInput } from '@/lib/format';
 import type { EventSettings, SocialNetwork } from '@/lib/types';
 import { useSettings } from '@/hooks/useSettings';
 import { useAsync } from '@/hooks/useAsync';
-import { Label, Loadable, PageHeader, Panel } from '../ui';
+import { ConfirmButton, Label, Loadable, PageHeader, Panel } from '../ui';
+import { formatDateTime } from '@/lib/format';
+import { Badge } from '@/components/ui/misc';
+
+const PAYMENT_FIELDS = ['bank_account_name', 'bank_name', 'bank_account_number', 'bank_iban', 'express_number'] as const;
 
 const SOCIALS: SocialNetwork[] = ['instagram', 'facebook', 'youtube', 'tiktok', 'spotify', 'whatsapp'];
 
@@ -38,10 +42,11 @@ const GROUPS: { title: string; fields: ReturnType<typeof TEXT>[] }[] = [
   {
     title: 'Pagamento (transferência)',
     fields: [
-      TEXT('bank_account_name', 'Nome da conta'),
+      TEXT('bank_account_name', 'Titular da conta'),
+      TEXT('bank_name', 'Banco', { hint: 'Nome do banco tal como consta no documento bancário oficial. Deixe vazio se não estiver confirmado.' }),
       TEXT('bank_account_number', 'Número da conta'),
       TEXT('bank_iban', 'IBAN'),
-      TEXT('express_number', 'Número Transferência Express'),
+      TEXT('express_number', 'Número Transferência Express', { hint: 'Deixe vazio se o número não estiver confirmado: o método deixa de ser oferecido.' }),
       TEXT('payment_instructions', 'Instruções adicionais', { area: true, rows: 3 }),
     ],
   },
@@ -126,6 +131,40 @@ export default function SettingsAdmin() {
     <form onSubmit={save}>
       <PageHeader title="Evento e conteúdos" description="Todas as alterações ficam registadas na auditoria." actions={<Button type="submit" loading={busy}><Save className="h-4 w-4" /> Guardar</Button>} />
       {msg && <Alert tone={msg.tone} className="mb-4">{msg.text}</Alert>}
+      <Panel title="Validação dos dados de pagamento" className="mb-4">
+        {(() => {
+          const unsaved = PAYMENT_FIELDS.some((k) => ((form[k] as string) ?? '').trim() !== ((settings[k] as string) ?? '').trim());
+          return (
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-2xl space-y-1 text-sm">
+                <p className="flex items-center gap-2 font-semibold">
+                  Estado:{' '}
+                  {settings.payment_ready ? <Badge tone="ok">Confirmados</Badge> : <Badge tone="warn">Por validar — vendas bloqueadas</Badge>}
+                </p>
+                {settings.payment_ready ? (
+                  <p className="text-fg-muted">Confirmados por {settings.payment_confirmed_by} em {formatDateTime(settings.payment_confirmed_at)}. Qualquer alteração ao titular, banco, conta, IBAN ou número Express anula esta confirmação.</p>
+                ) : (
+                  <p className="text-fg-muted">Os compradores só vêem as coordenadas bancárias, e só é possível comprar, depois de um administrador confirmar que os dados abaixo são os oficiais (verificados no documento do banco).</p>
+                )}
+                {unsaved && <p className="font-semibold text-amber-800">Há alterações aos dados de pagamento por guardar. Guarde antes de confirmar.</p>}
+              </div>
+              {settings.payment_ready ? (
+                <ConfirmButton danger title="Retirar a confirmação?" description="As vendas ficam bloqueadas e os compradores deixam de ver as coordenadas bancárias até nova confirmação." confirmLabel="Retirar confirmação"
+                  onConfirm={async () => { await api('/admin/settings/payment-confirmation', { json: { confirm: false } }); await reload(); }}>
+                  Retirar confirmação
+                </ConfirmButton>
+              ) : (
+                <ConfirmButton variant="gold" size="md" disabled={unsaved} title="Confirmar os dados de pagamento?"
+                  description={<>Confirma que estes são os dados oficiais da conta para receber os pagamentos: <strong>{settings.bank_account_name || '—'}</strong>{settings.bank_name && ` · ${settings.bank_name}`} · IBAN {settings.bank_iban || '—'} · Conta {settings.bank_account_number || '—'} · Express {settings.express_number || '—'}. A confirmação fica registada na auditoria.</>}
+                  confirmLabel="Sim, são os dados oficiais"
+                  onConfirm={async () => { await api('/admin/settings/payment-confirmation', { json: { confirm: true } }); await reload(); setMsg({ tone: 'ok', text: 'Dados de pagamento confirmados.' }); }}>
+                  Confirmar dados de pagamento
+                </ConfirmButton>
+              )}
+            </div>
+          );
+        })()}
+      </Panel>
       <div className="grid gap-4 xl:grid-cols-2">
         <Panel title="Data e vendas">
           <div className="grid gap-3 sm:grid-cols-2">

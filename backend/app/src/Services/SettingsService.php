@@ -22,7 +22,7 @@ final class SettingsService
 
     /** Chaves da tabela settings (texto livre, máx. caracteres) */
     private const SETTING_KEYS = [
-        'bank_account_name' => 200, 'bank_account_number' => 60, 'bank_iban' => 40, 'express_number' => 30,
+        'bank_account_name' => 200, 'bank_name' => 120, 'bank_account_number' => 60, 'bank_iban' => 40, 'express_number' => 30,
         'payment_instructions' => 1000, 'contact_email' => 254, 'contact_phone' => 40, 'copyright_text' => 255,
         'credits_text' => 255, 'privacy_text' => 20000, 'terms_text' => 20000, 'email_sender_name' => 100, 'email_reply_to' => 254,
     ];
@@ -30,7 +30,13 @@ final class SettingsService
     private const SOCIALS = ['instagram', 'facebook', 'youtube', 'tiktok', 'spotify', 'whatsapp'];
 
     /** Só aparecem na etapa de pagamento de um pedido (nunca no site público). */
-    private const PRIVATE_KEYS = ['bank_account_name', 'bank_account_number', 'bank_iban', 'express_number', 'payment_instructions'];
+    private const PRIVATE_KEYS = ['bank_account_name', 'bank_name', 'bank_account_number', 'bank_iban', 'express_number', 'payment_instructions', 'payment_confirmed_at', 'payment_confirmed_by'];
+
+    /** Campos que compõem as coordenadas de pagamento (a confirmação cobre exactamente estes valores). */
+    private const PAYMENT_KEYS = ['bank_account_name', 'bank_name', 'bank_account_number', 'bank_iban', 'express_number'];
+
+    /** Registo da validação administrativa dos dados de pagamento (JSON em settings). */
+    private const CONFIRMATION_KEY = 'payment_details_confirmation';
 
     /** @return array<string,mixed> */
     public static function event(): array
@@ -85,7 +91,84 @@ final class SettingsService
         foreach (array_keys(self::SETTING_KEYS) as $k) {
             $out[$k] = $s[$k] ?? '';
         }
+        $conf = self::confirmation($s);
+        $out['payment_ready'] = $conf !== null;
+        $out['payment_confirmed_at'] = $conf['at'] ?? null;
+        $out['payment_confirmed_by'] = $conf['by'] ?? null;
         return $out;
+    }
+
+    private static function fingerprint(array $s): string
+    {
+        $vals = [];
+        foreach (self::PAYMENT_KEYS as $k) {
+            $vals[$k] = trim((string) ($s[$k] ?? ''));
+        }
+        return hash('sha256', (string) json_encode($vals, JSON_UNESCAPED_UNICODE));
+    }
+
+    /**
+     * Validação em vigor, ou null. Só é válida se os dados actuais forem exactamente os que
+     * foram confirmados: qualquer alteração às coordenadas anula a confirmação.
+     */
+    private static function confirmation(array $s): ?array
+    {
+        $c = json_decode((string) ($s[self::CONFIRMATION_KEY] ?? ''), true);
+        if (!is_array($c) || !isset($c['fingerprint'], $c['at']) || !hash_equals((string) $c['fingerprint'], self::fingerprint($s))) {
+            return null;
+        }
+        return self::hasPaymentData($s) ? $c : null;
+    }
+
+    private static function hasPaymentData(array $s): bool
+    {
+        $transfer = trim((string) ($s['bank_iban'] ?? '')) !== '' || trim((string) ($s['bank_account_number'] ?? '')) !== '';
+        $express = trim((string) ($s['express_number'] ?? '')) !== '';
+        return trim((string) ($s['bank_account_name'] ?? '')) !== '' && ($transfer || $express);
+    }
+
+    /** As coordenadas oficiais estão validadas pela organização? (condição para vender) */
+    public static function paymentReady(): bool
+    {
+        return self::confirmation(self::settings()) !== null;
+    }
+
+    /**
+     * Coordenadas para o comprador (página do pedido e emails). Sem validação administrativa
+     * em vigor, não é devolvido nenhum dado bancário.
+     */
+    public static function paymentDetails(): array
+    {
+        $s = self::settings();
+        $ready = self::confirmation($s) !== null;
+        $v = fn (string $k) => $ready ? trim((string) ($s[$k] ?? '')) : '';
+        return [
+            'confirmed' => $ready,
+            'account_name' => $v('bank_account_name'), 'bank_name' => $v('bank_name'), 'account_number' => $v('bank_account_number'),
+            'iban' => $v('bank_iban'), 'express_number' => $v('express_number'),
+            'instructions' => $ready ? (string) ($s['payment_instructions'] ?? '') : '',
+        ];
+    }
+
+    /** O administrador confirma (ou retira a confirmação de) as coordenadas de pagamento actuais. */
+    public static function confirmPayment(bool $confirm, array $user): array
+    {
+        $s = self::settings();
+        if ($confirm) {
+            if (!self::hasPaymentData($s)) {
+                throw new ApiError('DADOS_PAGAMENTO_INCOMPLETOS', 422);
+            }
+            $value = (string) json_encode(['fingerprint' => self::fingerprint($s), 'at' => gmdate('Y-m-d\\TH:i:s\\Z'), 'by' => $user['email'] ?? ''], JSON_UNESCAPED_SLASHES);
+        } else {
+            $value = '';
+        }
+        self::put(self::CONFIRMATION_KEY, $value, (string) $user['id']);
+        $audit = [];
+        foreach (self::PAYMENT_KEYS as $k) {
+            $audit[$k] = (string) ($s[$k] ?? '');
+        }
+        Audit::log($confirm ? 'pagamento.dados_confirmados' : 'pagamento.confirmacao_retirada', 'settings', (string) self::EVENT_ID, $audit);
+        return self::full();
     }
 
     /** Actualização parcial pelo administrador (com auditoria antes/depois). */

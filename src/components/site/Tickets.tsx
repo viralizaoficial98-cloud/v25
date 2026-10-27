@@ -31,7 +31,8 @@ function TicketCard({ t, index, onVip }: { t: PublicTicketType; index: number; o
   const featured = vip || /premium/i.test(t.name);
   const soldOut = !vip && t.stock_defined && t.available <= 0;
   const notYet = t.sales_start && new Date(t.sales_start) > new Date();
-  const canBuy = !vip && s.sales_open && t.on_sale && !soldOut;
+  // O servidor decide (on_sale); o browser confirma ainda stock definido e disponível
+  const canBuy = !vip && s.sales_open && t.on_sale && t.stock_defined && t.available > 0;
   const low = canBuy && t.quantity_total > 0 && t.available / t.quantity_total <= 0.15;
 
   return (

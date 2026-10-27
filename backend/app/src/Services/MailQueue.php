@@ -99,7 +99,7 @@ final class MailQueue
         $ctx = [
             'event' => ['name' => $s['event_name'], 'starts_at' => $s['starts_at'], 'venue' => $s['venue'], 'address' => $s['address'], 'maps_url' => $s['maps_url']],
             'sender' => ['contact_email' => $s['contact_email'], 'contact_phone' => $s['contact_phone']],
-            'payment' => ['account_name' => $s['bank_account_name'], 'account_number' => $s['bank_account_number'], 'iban' => $s['bank_iban'], 'express_number' => $s['express_number']],
+            'payment' => SettingsService::paymentDetails(),
             'tickets' => [],
         ] + $payload;
         if (!empty($payload['vip_request_id'])) {

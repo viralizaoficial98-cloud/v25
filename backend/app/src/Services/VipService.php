@@ -137,6 +137,9 @@ final class VipService
             if (!$p || $p['status'] !== 'enviada' || $r['status'] !== 'proposta_enviada') {
                 throw new ApiError('PROPOSTA_INDISPONIVEL', 409);
             }
+            if (!SettingsService::paymentReady()) {
+                throw new ApiError('PAGAMENTO_POR_VALIDAR', 409);
+            }
             if (strtotime($p['valid_until'] . ' UTC') < time()) {
                 Db::run("UPDATE vip_proposals SET status = 'expirada' WHERE id = :id", ['id' => $p['id']]);
                 throw new ApiError('PROPOSTA_EXPIRADA', 409);

@@ -231,6 +231,11 @@ $r->get('/admin/settings', function (Request $q) {
     Auth::require($q, 'settings.manage');
     return SettingsService::full();
 });
+// Validação administrativa das coordenadas de pagamento (condição para vender)
+$r->post('/admin/settings/payment-confirmation', function (Request $q) {
+    $u = Auth::require($q, 'settings.manage');
+    return SettingsService::confirmPayment((bool) $q->input('confirm', false), $u);
+});
 // Configurações (vendas abertas/fechadas exige gestão de ingressos ou configurações)
 $r->put('/admin/settings', function (Request $q) {
     $in = $q->json();

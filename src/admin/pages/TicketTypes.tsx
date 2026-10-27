@@ -35,6 +35,22 @@ const EMPTY: Draft = {
   persons_per_ticket: '1', sales_start: '', sales_end: '', published: false, sort_order: '0', sale_mode: 'directo', benefits: '', badge: '',
 };
 
+/** Motivos pelos quais uma categoria não está à venda no site (mesmas regras do servidor). */
+function blockers(t: TicketTypeRow, salesOpen: boolean, paymentReady: boolean): string[] {
+  if (t.sale_mode === 'consulta') return [];
+  const r: string[] = [];
+  const now = Date.now();
+  if (!t.published) r.push('categoria não publicada');
+  if (t.price_kz === null) r.push('sem preço');
+  if (t.quantity_total === 0) r.push('quantidade por definir');
+  else if (t.quantity_total - t.quantity_reserved - t.quantity_sold <= 0) r.push('esgotado');
+  if (t.sales_start && new Date(t.sales_start).getTime() > now) r.push(`vendas só a partir de ${formatDateTime(t.sales_start)}`);
+  if (t.sales_end && new Date(t.sales_end).getTime() <= now) r.push('período de vendas terminado');
+  if (!salesOpen) r.push('vendas fechadas');
+  if (!paymentReady) r.push('dados de pagamento por validar');
+  return r;
+}
+
 interface PriceChange { old_price_kz: number | null; new_price_kz: number | null; changed_by: string | null; changed_at: string }
 
 export default function TicketTypes() {
@@ -141,6 +157,32 @@ export default function TicketTypes() {
         </div>
       </Panel>
       {msg && <Alert tone="info" className="mb-4">{msg}</Alert>}
+      {data.length > 0 && (
+        <Panel title="Estado de venda no site" className="mb-4">
+          {!settings.payment_ready && (
+            <Alert tone="warn" className="mb-3" title="Dados de pagamento por validar">
+              Um administrador tem de confirmar as coordenadas bancárias oficiais em “Evento e conteúdos” antes de qualquer venda.
+            </Alert>
+          )}
+          <ul className="divide-y divide-fg/10 text-sm">
+            {data.map((t) => {
+              const b = blockers(t, settings.sales_open, settings.payment_ready);
+              return (
+                <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                  <span className="font-semibold">{t.name}</span>
+                  {t.sale_mode === 'consulta' ? (
+                    <Badge tone="info">Por consulta — só por proposta VIP</Badge>
+                  ) : b.length === 0 ? (
+                    <Badge tone="ok">À venda — botão “Comprar bilhete” activo</Badge>
+                  ) : (
+                    <span className="text-right text-xs text-amber-900">Bloqueado: {b.join(' · ')}</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </Panel>
+      )}
       <Panel>
         <Loadable loading={loading} error={error} empty={data.length === 0 ? 'Ainda não existem categorias. Crie a primeira com o preço confirmado pela organização.' : false}>
           <Table head={['Categoria', 'Preço', 'Stock (total / reservado / vendido)', 'Limites', 'Período de vendas', 'Estado', '']}>

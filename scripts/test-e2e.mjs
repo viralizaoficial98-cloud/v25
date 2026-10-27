@@ -86,11 +86,12 @@ async function uploadProof(page) {
   await page.getByRole('button', { name: 'Enviar comprovativo' }).click();
   await page.getByRole('heading', { name: 'PAGAMENTO EM ANÁLISE' }).waitFor();
   await page.getByText('O comprovativo ainda não confirma o pagamento.').waitFor();
+  await page.getByText('A aguardar confirmação de pagamento').first().waitFor();
 }
 
 async function buy(page, category, qty, who) {
   await page.goto(BASE + '/');
-  await card(page, category).getByRole('link', { name: /comprar ingresso/i }).click();
+  await card(page, category).getByRole('link', { name: /comprar bilhete/i }).click();
   await page.getByRole('heading', { name: '1. Escolha o seu ingresso' }).waitFor();
   const radio = page.getByRole('radio', { name: new RegExp(category) });
   if ((await radio.getAttribute('aria-checked')) !== 'true') throw new Error(`Categoria ${category} não pré-seleccionada`);
@@ -134,15 +135,19 @@ try {
   await visitor.getByText('25 000 Kz').waitFor();
   await card(visitor, 'VIP').getByText('Por consulta', { exact: true }).first().waitFor();
   await visitor.getByText('A AGUARDAR ABERTURA DAS VENDAS').waitFor();
-  if (await visitor.getByRole('link', { name: /comprar ingresso/i }).count()) throw new Error('Compra disponível com vendas fechadas');
+  if (await visitor.getByRole('link', { name: /comprar bilhete/i }).count()) throw new Error('Compra disponível com vendas fechadas');
   const bg = await visitor.evaluate(() => getComputedStyle(document.body).backgroundColor);
   if (bg !== 'rgb(255, 255, 255)') throw new Error('Fundo não é branco: ' + bg);
-  await visitor.getByAltText('Renew — Criando momentos épicos para si').waitFor();
+  // Mesmo logótipo Renew (mesmo ficheiro) no cabeçalho, com link para o início, e no rodapé
+  const headerLogo = visitor.getByRole('link', { name: 'V25 — O Legado, página inicial' }).getByRole('img');
+  const footerLogo = visitor.locator('footer').getByAltText('Renew — Criando momentos épicos para si');
+  const srcs = [await headerLogo.getAttribute('src'), await footerLogo.getAttribute('src')];
+  if (!srcs[0] || srcs[0] !== srcs[1]) throw new Error('Logótipo do cabeçalho diferente do rodapé: ' + srcs.join(' / '));
   await visitor.waitForTimeout(1200);
   await shot(visitor, '01-landing-desktop');
   await scrollThrough(visitor);
   await visitor.screenshot({ path: path.join(SHOTS, '01b-landing-desktop-completa.png'), fullPage: true });
-  step('Landing White Premium: textos oficiais do CMS, Normal 12 500 Kz, Premium 25 000 Kz, VIP por consulta, vendas fechadas, logótipo Renew no rodapé');
+  step('Landing White Premium: textos oficiais do CMS, Normal 12 500 Kz, Premium 25 000 Kz, VIP por consulta, vendas fechadas, logótipo Renew idêntico no cabeçalho e no rodapé');
 
   // ── Instalação: primeiro administrador ─────────────────────────────────────
   const admin = await newPage('admin');
@@ -176,9 +181,25 @@ try {
   await admin.getByRole('button', { name: 'Histórico de preços de Normal' }).click();
   await admin.getByRole('dialog').getByText('13 000 Kz').first().waitFor();
   await admin.keyboard.press('Escape');
+  await admin.getByText('Bloqueado: vendas fechadas · dados de pagamento por validar').first().waitFor();
   await admin.getByRole('switch', { name: 'Vendas fechadas' }).click();
   await admin.getByText('Vendas abertas.').waitFor();
-  step('Gestão comercial: stock Normal 100 / Premium 50 / VIP 10, histórico de preços registado, vendas abertas');
+  // Vendas abertas mas coordenadas bancárias por validar: o site continua sem botão de compra
+  await visitor.reload();
+  await card(visitor, 'Normal').getByText('Brevemente').waitFor();
+  if (await visitor.getByRole('link', { name: /comprar/i }).count()) throw new Error('Compra disponível sem dados de pagamento validados');
+  await admin.getByRole('link', { name: 'Evento e conteúdos' }).click();
+  await admin.getByText('Por validar — vendas bloqueadas').waitFor();
+  await admin.getByRole('button', { name: 'Confirmar dados de pagamento' }).click();
+  await admin.getByRole('dialog').getByText('27 LUAS COMUNICACAO E MARKETING SU LDA').waitFor();
+  await admin.getByRole('button', { name: 'Sim, são os dados oficiais' }).click();
+  await admin.getByText('Dados de pagamento confirmados.').waitFor();
+  await admin.getByText(/Confirmados por admin@renewangola\.online/).waitFor();
+  await shot(admin, '03b-validacao-dados-pagamento');
+  await admin.getByRole('link', { name: 'Ingressos, lotes e stock' }).click();
+  await admin.getByText('À venda — botão “Comprar bilhete” activo').first().waitFor();
+  await shot(admin, '03c-estado-de-venda');
+  step('Gestão comercial: stock Normal 100 / Premium 50 / VIP 10, histórico de preços, vendas abertas; compra só depois de o administrador validar os dados bancários oficiais');
 
   // ── CMS: rascunho → pré-visualização → publicação ─────────────────────────
   const SLOGAN = 'Teste E2E — uma celebração para recordar.';
@@ -205,7 +226,14 @@ try {
   await admin.getByRole('button', { name: 'Histórico' }).click();
   await admin.getByRole('dialog').getByText('Publicado').first().waitFor();
   await admin.keyboard.press('Escape');
-  step('CMS: slogan editado em rascunho (invisível ao público), pré-visualizado, publicado e registado no histórico');
+  await admin.getByRole('button', { name: /^Ingressos/ }).click();
+  await admin.getByLabel('Texto do botão de compra').fill('Comprar bilhete');
+  await admin.getByRole('button', { name: 'Publicar' }).click();
+  await admin.getByRole('button', { name: 'Publicar agora' }).click();
+  await admin.getByText(/Publicado\. O site público/).waitFor();
+  await visitor.reload();
+  await card(visitor, 'Normal').getByRole('link', { name: /comprar bilhete/i }).waitFor();
+  step('CMS: slogan editado em rascunho (invisível ao público), pré-visualizado, publicado e registado no histórico; botão “Comprar bilhete” configurado no painel');
 
   // ── Galeria dos eventos: álbum, upload múltiplo, publicação ───────────────
   const photos = [];
@@ -256,7 +284,7 @@ try {
   await client.goto(BASE + '/');
   await client.locator('#ingressos').scrollIntoViewIfNeeded();
   await shot(client, '06-ingressos-mobile');
-  await card(client, 'Normal').getByRole('link', { name: /comprar ingresso/i }).click();
+  await card(client, 'Normal').getByRole('link', { name: /comprar bilhete/i }).click();
   await client.getByRole('button', { name: 'Aumentar quantidade' }).click();
   await client.getByRole('button', { name: 'Continuar' }).click();
   await client.getByLabel('Nome completo').fill('Maria da Silva');

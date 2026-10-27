@@ -12,7 +12,10 @@ interface Props {
   method: PaymentMethod;
   onMethod: (m: PaymentMethod) => void;
   saving?: boolean;
+  /** Coordenadas validadas pela organização (sem validação nada é mostrado) */
+  confirmed: boolean;
   accountName: string;
+  bankName: string;
   accountNumber: string;
   iban: string;
   expressNumber: string;
@@ -36,18 +39,22 @@ function Line({ label, value, copy, mono = true, accent }: { label: string; valu
  * Etapa 4 — dados oficiais de pagamento (vindos da base de dados, só mostrados
  * na página do pedido) com escolha entre Transferência Bancária e Express.
  */
-export function BankCard({ method, onMethod, saving, accountName, accountNumber, iban, expressNumber, amount, reference }: Props) {
-  const missing = method === 'express' ? !expressNumber : !iban && !accountNumber;
+export function BankCard({ method, onMethod, saving, confirmed, accountName, bankName, accountNumber, iban, expressNumber, amount, reference }: Props) {
+  const hasTransfer = Boolean(iban || accountNumber);
+  const hasExpress = Boolean(expressNumber);
+  // Só são oferecidos os métodos com dados oficiais configurados
+  const active: PaymentMethod = method === 'express' && hasExpress ? 'express' : hasTransfer ? 'transferencia' : 'express';
+  const missing = !confirmed || (active === 'express' ? !hasExpress : !hasTransfer);
   const tab = (m: PaymentMethod, label: string, Icon: typeof Landmark) => (
     <button
       type="button"
       role="tab"
-      aria-selected={method === m}
+      aria-selected={active === m}
       disabled={saving}
       onClick={() => onMethod(m)}
       className={cn(
         'flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition',
-        method === m ? 'bg-paper text-fg shadow-soft ring-1 ring-gold/50' : 'text-fg-muted hover:text-fg',
+        active === m ? 'bg-paper text-fg shadow-soft ring-1 ring-gold/50' : 'text-fg-muted hover:text-fg',
       )}
     >
       <Icon className="h-4 w-4 text-gold" aria-hidden /> {label}
@@ -61,18 +68,22 @@ export function BankCard({ method, onMethod, saving, accountName, accountNumber,
       <h2 className="mt-2 font-display text-3xl font-semibold text-fg">Escolha como pagar</h2>
 
       <div role="tablist" aria-label="Método de pagamento" className="mt-6 flex gap-1 rounded-2xl bg-paper-muted p-1">
-        {tab('transferencia', 'Transferência Bancária', Landmark)}
-        {tab('express', 'Transferência Express', Smartphone)}
+        {(hasTransfer || !confirmed) && tab('transferencia', 'Transferência Bancária', Landmark)}
+        {(hasExpress || !confirmed) && tab('express', 'Transferência Express', Smartphone)}
       </div>
 
       <div role="tabpanel" className="mt-6">
         {missing ? (
-          <p className="text-sm text-amber-800">Os dados para este método ainda não foram configurados pela organização. Contacte a equipa antes de pagar.</p>
+          <p role="alert" className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-300">
+            Os dados de pagamento estão a ser validados pela organização. <strong>Não efectue nenhuma transferência</strong> até
+            os dados oficiais aparecerem nesta página (actualize-a mais tarde ou contacte a organização).
+          </p>
         ) : (
           <dl className="space-y-4">
             {accountName && <Line label="Titular" value={accountName} mono={false} />}
-            {method === 'transferencia' ? (
+            {active === 'transferencia' ? (
               <>
+                {bankName && <Line label="Banco" value={bankName} mono={false} />}
                 {accountNumber && <Line label="Conta" value={accountNumber} copy={accountNumber.replace(/\s+/g, '')} />}
                 {iban && <Line label="IBAN" value={groupIban(iban)} copy={iban.replace(/\s+/g, '')} accent />}
               </>

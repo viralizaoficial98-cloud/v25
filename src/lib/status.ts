@@ -3,7 +3,7 @@ import type { OrderStatus } from './types';
 export const ORDER_STATUS: Record<OrderStatus, { label: string; tone: 'neutral' | 'warn' | 'info' | 'ok' | 'bad'; help: string }> = {
   iniciada: { label: 'Inscrição iniciada', tone: 'neutral', help: 'Lugar reservado. Avance para o pagamento dentro do prazo.' },
   aguardando_pagamento: { label: 'Aguardando pagamento', tone: 'warn', help: 'Faça a transferência e carregue o comprovativo.' },
-  comprovativo_enviado: { label: 'Comprovativo enviado', tone: 'info', help: 'Recebemos o comprovativo. Aguarda análise da equipa financeira.' },
+  comprovativo_enviado: { label: 'A aguardar confirmação de pagamento', tone: 'info', help: 'Recebemos o comprovativo. A equipa financeira vai confirmar manualmente a entrada do valor.' },
   em_analise: { label: 'Em análise', tone: 'info', help: 'A equipa financeira está a confirmar o pagamento no banco.' },
   aprovado: { label: 'Pagamento aprovado', tone: 'ok', help: 'Pagamento confirmado. Os ingressos estão a ser emitidos.' },
   rejeitado: { label: 'Pagamento rejeitado', tone: 'bad', help: 'O comprovativo não foi validado. Veja o motivo e envie um novo.' },

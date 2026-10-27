@@ -203,7 +203,10 @@ const orderId = async (code) => (await q('SELECT id FROM orders WHERE order_code
 
 test('ingressos: stock por definir bloqueia compra; VIP nunca pelo checkout', async () => {
   assert.equal((await admin.put('/admin/settings', { sales_open: true })).status, 200);
+  assert.equal((await admin.post('/admin/settings/payment-confirmation', { confirm: true })).status, 200);
   err(await anon().post('/public/orders', buyer()), 'DISPONIBILIDADE_POR_ANUNCIAR', 409);
+  // Quantidade por definir → nunca “à venda”, mesmo com vendas abertas
+  assert.equal((await anon().get('/public/ticket-types')).data.find((t) => t.name === 'Normal').on_sale, false);
   for (const [name, qty] of [['Normal', 100], ['Premium', 50], ['VIP', 5]]) {
     const t = cats[name];
     const r = await admin.put(`/admin/ticket-types/${t.id}`, { ...t, quantity_total: qty });
@@ -393,4 +396,38 @@ test('API pública não expõe dados bancários nem rascunhos', async () => {
   assert.equal(JSON.stringify(s.data).includes('AO0600400000'), false);
   assert.equal((await admin.get('/admin/settings')).data.bank_iban, 'AO06004000004006599510166');
   err(await fin.get('/admin/settings'), 'SEM_PERMISSAO', 403);
+});
+
+test('dados de pagamento: validação administrativa, alteração anula a confirmação, sem dados não há venda', async () => {
+  const before = (await admin.get('/admin/settings')).data;
+  assert.equal(before.payment_ready, true);
+  // Pedido pendente criado com dados validados
+  const o = (await anon().post('/public/orders', buyer({ quantity: 1, guests_total: 1 }))).data;
+  assert.equal((await anon().get(`/public/orders/${o.order_code}`, tok(o.access_token))).data.payment.confirmed, true);
+
+  // Alterar o IBAN (ou qualquer coordenada) retira a validação automaticamente
+  const changed = await admin.put('/admin/settings', { bank_iban: 'AO06000000000000000000000', bank_name: 'Banco por confirmar' });
+  assert.equal(changed.data.payment_ready, false);
+  assert.equal((await anon().get('/public/settings')).data.payment_ready, false);
+  assert.equal('bank_name' in (await anon().get('/public/settings')).data, false, 'banco não é público');
+  const view = (await anon().get(`/public/orders/${o.order_code}`, tok(o.access_token))).data.payment;
+  assert.deepEqual([view.confirmed, view.iban, view.account_number, view.express_number, view.bank_name], [false, '', '', '', '']);
+  err(await anon().post('/public/orders', buyer()), 'PAGAMENTO_POR_VALIDAR', 409);
+  assert.ok((await anon().get('/public/ticket-types')).data.every((t) => t.on_sale === false));
+
+  // Confirmação exige titular + IBAN/conta ou Express
+  await admin.put('/admin/settings', { bank_account_name: '' });
+  err(await admin.post('/admin/settings/payment-confirmation', { confirm: true }), 'DADOS_PAGAMENTO_INCOMPLETOS', 422);
+
+  // Repor os dados oficiais e confirmar de novo; Express vazio deixa de ser oferecido
+  await admin.put('/admin/settings', { bank_account_name: before.bank_account_name, bank_iban: before.bank_iban, bank_name: '', express_number: '' });
+  assert.equal((await admin.post('/admin/settings/payment-confirmation', { confirm: true })).data.payment_ready, true);
+  const v2 = (await anon().get(`/public/orders/${o.order_code}`, tok(o.access_token))).data.payment;
+  assert.equal(v2.iban, before.bank_iban);
+  assert.equal(v2.express_number, '');
+  assert.equal((await anon().post('/public/orders', buyer({ quantity: 1, guests_total: 1 }))).status, 201);
+  const audit = await q("SELECT action FROM audit_logs WHERE action LIKE 'pagamento.%'");
+  assert.ok(audit.length >= 2);
+  await admin.put('/admin/settings', { express_number: before.express_number });
+  await admin.post('/admin/settings/payment-confirmation', { confirm: true });
 });

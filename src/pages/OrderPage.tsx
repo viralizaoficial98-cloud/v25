@@ -64,7 +64,10 @@ export default function OrderPage() {
   const st = ORDER_STATUS[order.status];
   const canPay = ['iniciada', 'aguardando_pagamento', 'rejeitado'].includes(order.status);
   const inReview = ['comprovativo_enviado', 'em_analise'].includes(order.status);
-  const chosen: PaymentMethod = method ?? order.payment_method ?? 'transferencia';
+  const preferred: PaymentMethod = method ?? order.payment_method ?? 'transferencia';
+  // Só métodos com dados oficiais: sem número Express, usa transferência (e vice-versa)
+  const chosen: PaymentMethod =
+    preferred === 'express' ? (order.payment.express_number ? 'express' : 'transferencia') : order.payment.iban || order.payment.account_number ? 'transferencia' : 'express';
   const done = ['aprovado', 'emitido'].includes(order.status);
   // Etapas do checkout: 4 = pagamento, 5 = confirmação (em análise); concluídas após aprovação
   const current = canPay ? 3 : inReview ? 4 : done ? 5 : 3;
@@ -125,6 +128,8 @@ export default function OrderPage() {
               <BankCard
                 method={chosen}
                 onMethod={chooseMethod}
+                confirmed={order.payment.confirmed}
+                bankName={order.payment.bank_name}
                 accountName={order.payment.account_name}
                 accountNumber={order.payment.account_number}
                 iban={order.payment.iban}
@@ -133,7 +138,7 @@ export default function OrderPage() {
                 reference={order.order_code}
               />
               {order.payment.instructions && <p className="text-sm leading-relaxed text-fg/60">{order.payment.instructions}</p>}
-              <ProofUpload code={order.order_code} token={token} method={chosen} onUploaded={() => reload()} />
+              {order.payment.confirmed && <ProofUpload code={order.order_code} token={token} method={chosen} onUploaded={() => reload()} />}
             </>
           )}
 

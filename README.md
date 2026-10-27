@@ -89,6 +89,7 @@ Guia completo: [`docs/INSTALACAO_CPANEL.md`](docs/INSTALACAO_CPANEL.md).
 
 | Documento | Conteúdo |
 |---|---|
+| [ACTUALIZACAO_V2_1.md](docs/ACTUALIZACAO_V2_1.md) | Actualização v2.1 (logótipo no menu, validação dos dados bancários, activação da compra) — só ficheiros |
 | [ACTUALIZACAO_V2.md](docs/ACTUALIZACAO_V2.md) | **Actualização da produção para a v2**: backup, staging, deploy, migração 003, rollback |
 | [PLANO_V2_WHITE_PREMIUM.md](docs/PLANO_V2_WHITE_PREMIUM.md) | Análise e plano incremental da v2 |
 | [INSTALACAO_CPANEL.md](docs/INSTALACAO_CPANEL.md) | Instalação, `.env`, permissões, HTTPS, DNS, SMTP, cron, actualizações, backups |

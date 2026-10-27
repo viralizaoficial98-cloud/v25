@@ -5,6 +5,7 @@ import { useSite } from '@/hooks/useSite';
 import { formatEventDate, formatEventTime } from '@/lib/format';
 import type { SocialNetwork } from '@/lib/types';
 import { Logo } from './Navbar';
+import { RenewLogo } from './RenewLogo';
 
 const SOCIAL: Record<SocialNetwork, { label: string; icon: typeof Instagram }> = {
   instagram: { label: 'Instagram', icon: Instagram },
@@ -21,7 +22,6 @@ export function Footer() {
   const year = new Date().getFullYear();
   const f = useSite().content.footer;
   const closing = f.closing_message || s.closing_message;
-  const base = import.meta.env.BASE_URL;
 
   return (
     <footer className="relative border-t border-gold/10 bg-paper-soft pt-20">
@@ -87,10 +87,7 @@ export function Footer() {
           <div className="flex flex-col items-center gap-3 border-t border-fg/10 py-8 sm:flex-row sm:justify-center sm:gap-5">
             <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-fg-muted">{f.partner_label}</span>
             {/* Identificação institucional da organização — discreta, não substitui a identidade V25 */}
-            <picture>
-              <source type="image/webp" srcSet={`${base}images/renew-logo-480.webp 480w, ${base}images/renew-logo-960.webp 960w`} sizes="180px" />
-              <img src={`${base}images/renew-logo-480.png`} alt="Renew — Criando momentos épicos para si" width={180} height={50} loading="lazy" decoding="async" className="h-auto w-[150px] sm:w-[180px]" />
-            </picture>
+            <RenewLogo className="h-[42px] sm:h-[50px]" />
           </div>
         )}
         <div className="flex flex-col gap-2 border-t border-fg/10 py-6 text-xs text-fg-muted md:flex-row md:justify-between">

@@ -61,6 +61,7 @@ em todos os pedidos que alteram dados (token obtido em `GET /api/auth/session`).
 | POST | `/admin/checkin` | `checkin.scan` — `{input: QR ou código, commit: bool}` → `ok\|valido\|ja_utilizado\|anulado\|invalido` |
 | GET/POST/PUT/DELETE | `/admin/ticket-types[/{id}]` | `ticket_types.manage` |
 | GET | `/admin/settings` | `settings.manage` — configuração completa (inclui dados bancários) |
+| POST | `/admin/settings/payment-confirmation` | `settings.manage` — `{confirm: true\|false}` valida (ou retira) as coordenadas bancárias actuais; sem validação não há vendas nem dados bancários para o comprador (`PAGAMENTO_POR_VALIDAR`) |
 | GET | `/admin/ticket-types/{id}/price-history` | `ticket_types.manage` |
 | PUT | `/admin/settings` | `settings.manage` (ou só `{sales_open}` com `ticket_types.manage`) |
 | GET/POST/PUT/DELETE | `/admin/content/{timeline\|members\|faqs}[/{id}]` | `content.manage` |

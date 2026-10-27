@@ -41,7 +41,7 @@ export const DEFAULT_SITE: SiteContent = {
     title: 'Escolhe a tua',
     title_highlight: 'experiência',
     intro: 'Prepare-se para celebrar 25 anos de música, fé e histórias que marcaram gerações. Escolha a categoria do seu ingresso e faça parte desta celebração especial!',
-    buy_label: 'Comprar ingresso',
+    buy_label: 'Comprar bilhete',
     vip_label: 'Solicitar acesso VIP',
     note: 'Pagamento por transferência bancária ou Transferência Express. O ingresso é emitido após a confirmação do pagamento pela equipa financeira.',
   },

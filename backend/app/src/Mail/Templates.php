@@ -79,7 +79,8 @@ final class Templates
         }
         return '<div style="background:#2b1d13;border:1px solid #c9a45c;border-radius:12px;padding:16px;margin:16px 0">'
             . '<div style="font-size:11px;letter-spacing:2px;color:#c9a45c;text-transform:uppercase;margin-bottom:8px">Dados para transferência</div><table role="presentation" width="100%">'
-            . (!empty($p['account_name']) ? self::row('Nome da conta', self::e($p['account_name'])) : '')
+            . (!empty($p['account_name']) ? self::row('Titular', self::e($p['account_name'])) : '')
+            . (!empty($p['bank_name']) ? self::row('Banco', self::e($p['bank_name'])) : '')
             . (!empty($p['account_number']) ? self::row('N.º da conta', self::e($p['account_number'])) : '')
             . (!empty($p['iban']) ? self::row('IBAN', '<span style="font-family:monospace">' . self::e($p['iban']) . '</span>') : '')
             . (!empty($p['express_number']) ? self::row('Transferência Express', self::e($p['express_number'])) : '')

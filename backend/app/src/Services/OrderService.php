@@ -126,6 +126,10 @@ final class OrderService
                     || ($t['sales_end'] !== null && strtotime($t['sales_end'] . ' UTC') <= $now)) {
                     throw new ApiError('VENDAS_FECHADAS', 409);
                 }
+                // Sem coordenadas de pagamento validadas pela organização não se aceitam pedidos
+                if (!SettingsService::paymentReady()) {
+                    throw new ApiError('PAGAMENTO_POR_VALIDAR', 409);
+                }
                 if ($qty < 1 || $qty > (int) $t['max_per_order']) {
                     throw new ApiError('QUANTIDADE_INVALIDA', 422);
                 }
@@ -235,7 +239,6 @@ final class OrderService
     {
         $reg = Db::one('SELECT * FROM registrations WHERE id = :id', ['id' => $o['registration_id']]);
         $item = Db::one('SELECT i.*, c.name, c.lot_label FROM order_items i JOIN ticket_categories c ON c.id = i.category_id WHERE i.order_id = :o LIMIT 1', ['o' => $o['id']]);
-        $s = SettingsService::settings();
         $tickets = [];
         $lastProof = Db::value('SELECT MAX(uploaded_at) FROM payment_proofs WHERE order_id = :o', ['o' => $o['id']]);
         if ($o['status'] === 'emitido') {
@@ -265,10 +268,8 @@ final class OrderService
             'rejection_reason' => $o['status'] === 'rejeitado' ? $o['rejection_reason'] : null,
             'cancel_reason' => $o['status'] === 'cancelado' ? $o['cancel_reason'] : null,
             'created_at' => Util::iso($o['created_at']),
-            'payment' => [
-                'account_name' => $s['bank_account_name'] ?? '', 'account_number' => $s['bank_account_number'] ?? '',
-                'iban' => $s['bank_iban'] ?? '', 'express_number' => $s['express_number'] ?? '', 'instructions' => $s['payment_instructions'] ?? '',
-            ],
+            // Coordenadas oficiais só com validação administrativa em vigor (senão vêm vazias e confirmed = false)
+            'payment' => SettingsService::paymentDetails(),
             'history' => array_map(fn ($h) => ['status' => $h['status'], 'at' => Util::iso(substr((string) $h['created_at'], 0, 19))],
                 Db::all('SELECT status, created_at FROM transaction_history WHERE order_id = :o ORDER BY created_at, id', ['o' => $o['id']])),
             'proofs' => array_map(fn ($p) => ['uploaded_at' => Util::iso($p['uploaded_at']), 'status' => $p['status'], 'mime_type' => $p['mime_type']],

@@ -47,6 +47,7 @@ forem feitos, a plataforma mostra estados honestos (vendas fechadas, emails “p
 | 28 | Criar os álbuns da Galeria dos Eventos (fotografias autorizadas, legendas, texto alternativo) | Galeria dos Eventos |
 | 29 | Rever textos, imagem do Hero e SEO; publicar | Gestão do Website |
 | 30 | Email de contacto preenchido (recebe o aviso de cada nova solicitação VIP) | Evento e conteúdos |
+| 31 | **Confirmar os dados de pagamento** (Evento e conteúdos → Validação) — sem isto não há vendas | Evento e conteúdos |
 
 ## Opcional / recomendado
 

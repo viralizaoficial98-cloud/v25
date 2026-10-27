@@ -259,6 +259,16 @@ test('ingressos: preço obrigatório para publicar; vendas fechadas bloqueiam pe
   assert.equal(pub.data[0].on_sale, false);
   err(await createOrder(buyer()), 'VENDAS_FECHADAS', 409);
   assert.equal((await admin.put('/admin/settings', { sales_open: true })).status, 200);
+  // Vendas abertas mas coordenadas de pagamento por validar: continua sem venda
+  assert.equal((await anon().get('/public/settings')).data.payment_ready, false);
+  assert.equal((await anon().get('/public/ticket-types')).data[0].on_sale, false);
+  err(await createOrder(buyer()), 'PAGAMENTO_POR_VALIDAR', 409);
+  err(await fin.post('/admin/settings/payment-confirmation', { confirm: true }), 'SEM_PERMISSAO', 403);
+  const conf = await admin.post('/admin/settings/payment-confirmation', { confirm: true });
+  assert.equal(conf.status, 200, JSON.stringify(conf.data));
+  assert.equal(conf.data.payment_ready, true);
+  assert.equal(conf.data.payment_confirmed_by, 'admin@renewangola.online');
+  assert.equal((await anon().get('/public/settings')).data.payment_ready, true);
   const pub2 = await anon().get('/public/ticket-types');
   assert.equal(pub2.data[0].on_sale, true);
   assert.equal(pub2.data[0].available, 10);

@@ -71,6 +71,8 @@ const MESSAGES: Record<string, string> = {
   PROPOSTA_INDISPONIVEL: 'Esta proposta já não está disponível (foi respondida, substituída ou cancelada).',
   CONDICOES_OBRIGATORIAS: 'Descreva as condições da proposta (mínimo 5 caracteres).',
   VIDEO_URL_NAO_AUTORIZADO: 'Só são aceites ligações do YouTube ou do Vimeo.',
+  PAGAMENTO_POR_VALIDAR: 'As vendas ainda não estão disponíveis: a organização está a validar os dados de pagamento. Tente novamente mais tarde.',
+  DADOS_PAGAMENTO_INCOMPLETOS: 'Preencha o titular e pelo menos o IBAN/número de conta ou o número Express antes de confirmar.',
   LIMITE_ALBUM: 'O álbum atingiu o limite de 500 itens.',
   NAO_PODE_REMOVER_PROPRIO: 'Não pode retirar o seu próprio perfil de administrador.',
 };

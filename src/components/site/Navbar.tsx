@@ -5,6 +5,7 @@ import { Menu, Ticket, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { buttonVariants } from '@/components/ui/button';
 import { useSite } from '@/hooks/useSite';
+import { RenewLogo } from './RenewLogo';
 import type { SectionKey } from '@/lib/siteDefaults';
 
 export const NAV: { href: string; label: string; section: SectionKey }[] = [
@@ -60,8 +61,14 @@ export function Navbar() {
         Saltar para o conteúdo
       </a>
       <nav className="container flex h-16 items-center justify-between md:h-20" aria-label="Principal">
-        <Link to="/" aria-label="V25 — O Legado, início" onClick={() => window.scrollTo({ top: 0 })}>
-          <Logo />
+        <Link
+          to="/"
+          aria-label="V25 — O Legado, página inicial"
+          onClick={() => window.scrollTo({ top: 0 })}
+          className="flex shrink-0 items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2"
+        >
+          {/* Mesmo logótipo do rodapé (asset oficial), apenas redimensionado */}
+          <RenewLogo eager className="h-9 md:h-11" />
         </Link>
         <ul className="hidden items-center gap-7 lg:flex">
           {nav.map((n) => (
