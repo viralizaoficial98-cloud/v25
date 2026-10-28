@@ -13,13 +13,14 @@ em todos os pedidos que alteram dados (token obtido em `GET /api/auth/session`).
 |---|---|---|
 | GET | `/health` | Estado da API |
 | GET | `/public/settings` | Evento, contactos, textos (**sem** dados bancários desde a v2) |
-| GET | `/public/ticket-types` | Categorias publicadas: preço (`null` se `sale_mode = consulta`), `benefits`, `badge`, `stock_defined`, disponibilidade, `on_sale` |
+| GET | `/public/ticket-types` | Categorias publicadas: preço (`null` se `sale_mode = consulta`), `benefits`, `badge`, `sales_status` (`abertas`/`suspensas`/`esgotadas`), `stock_defined`, disponibilidade, `on_sale` |
 | GET | `/public/site` | Secções publicadas do CMS (ordem, visibilidade, conteúdo) |
 | GET | `/public/gallery/albums?year=&category=` | Álbuns publicados + anos e categorias para filtros |
 | GET | `/public/gallery/albums/{slug}?offset=&limit=` | Álbum com fotografias/vídeos (paginação, máx. 60) |
 | POST | `/public/vip` | Solicitação VIP `{full_name, email, phone, participants, message, consent, consent_version, website}` → `{request_code, access_token}` |
 | GET | `/public/vip/{code}` | Estado da solicitação e proposta (cabeçalho `X-Vip-Token`) |
 | POST | `/public/vip/{code}/accept` · `/decline` | Aceitar (cria o pedido de pagamento com o valor aprovado) ou recusar a proposta (token) |
+| POST | `/public/orders/quote` | `{ticket_type_id, quantity}` → `{unit_price_kz, total_kz, available, max_per_order}` — total calculado no servidor com as regras de venda; não reserva stock (v2.2) |
 | POST | `/public/orders/{code}/payment-method` | `{method: transferencia\|express}` (token) |
 | GET | `/public/timeline` · `/public/members` · `/public/faqs` | Conteúdos publicados |
 | GET | `/public/media?section=grupo\|memorias&offset=0&limit=12` | Galeria (paginação) |

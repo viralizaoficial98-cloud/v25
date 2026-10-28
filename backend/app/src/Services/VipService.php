@@ -49,8 +49,11 @@ final class VipService
             throw new ApiError('TEXTO_DEMASIADO_LONGO', 422, ['campo' => 'message']);
         }
         $cat = self::vipCategory();
-        if (!$cat['published']) {
+        if (!$cat['published'] || ($cat['sales_status'] ?? 'abertas') === 'suspensas') {
             throw new ApiError('VIP_INDISPONIVEL', 409);
+        }
+        if (($cat['sales_status'] ?? 'abertas') === 'esgotadas') {
+            throw new ApiError('VIP_ESGOTADO', 409);
         }
         if (Db::value("SELECT 1 FROM vip_requests WHERE email = :e AND status IN ('nova','em_analise','proposta_enviada') LIMIT 1", ['e' => $email])) {
             throw new ApiError('VIP_PEDIDO_DUPLICADO', 409);
@@ -146,6 +149,9 @@ final class VipService
             }
             $e = Db::one('SELECT * FROM events WHERE id = :id FOR UPDATE', ['id' => SettingsService::EVENT_ID]);
             $cat = self::vipCategory(true);
+            if (($cat['sales_status'] ?? 'abertas') !== 'abertas') {
+                throw new ApiError(($cat['sales_status'] ?? '') === 'esgotadas' ? 'VIP_ESGOTADO' : 'VIP_INDISPONIVEL', 409);
+            }
             $qty = (int) $p['tickets'];
             if ((int) $cat['quantity_total'] - (int) $cat['quantity_reserved'] - (int) $cat['quantity_sold'] < $qty) {
                 throw new ApiError('VIP_ESGOTADO', 409);

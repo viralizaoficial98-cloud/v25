@@ -4,7 +4,7 @@
 -- Ficheiro GERADO por scripts/build-mysql-schema.mjs a partir de database/migrations/.
 -- Não editar à mão. Para actualizações futuras use as migrações (bin/migrate.php)
 -- ou importe apenas os ficheiros de migração novos.
--- Migrações incluídas: 001_initial_schema.sql, 002_seed_official_data.sql, 003_v2_checkout_vip_cms_gallery.sql
+-- Migrações incluídas: 001_initial_schema.sql, 002_seed_official_data.sql, 003_v2_checkout_vip_cms_gallery.sql, 004_v2_2_estado_vendas_categoria.sql
 -- =============================================================================
 
 -- >>> 001_initial_schema.sql
@@ -654,5 +654,22 @@ INSERT IGNORE INTO site_sections (section_key, label, sort_order, enabled, draft
 INSERT IGNORE INTO site_sections (section_key, label, sort_order, enabled, draft_data, published_data, published_at) VALUES ('footer', 'Rodapé', 110, 1, '{"closing_message": "25 anos. Uma história. Muitas vozes. Um legado.", "tagline": "25 Anos de Música, Fé, Amizade e História", "show_partner_logo": true, "partner_label": "Organização e produção"}', '{"closing_message": "25 anos. Uma história. Muitas vozes. Um legado.", "tagline": "25 Anos de Música, Fé, Amizade e História", "show_partner_logo": true, "partner_label": "Organização e produção"}', UTC_TIMESTAMP());
 INSERT IGNORE INTO site_sections (section_key, label, sort_order, enabled, draft_data, published_data, published_at) VALUES ('seo', 'SEO e partilha', 900, 1, '{"meta_title": "V25 — O Legado · 25 Anos do Vibes — Grupo Vocal", "meta_description": "V25 — O Legado: 25 anos de música, fé, amizade e história do Vibes — Grupo Vocal. 20 de Dezembro de 2026, 16h00, Hotel Brisa Tropical, Morro Bento, Luanda. Garante já o teu ingresso.", "og_image": ""}', '{"meta_title": "V25 — O Legado · 25 Anos do Vibes — Grupo Vocal", "meta_description": "V25 — O Legado: 25 anos de música, fé, amizade e história do Vibes — Grupo Vocal. 20 de Dezembro de 2026, 16h00, Hotel Brisa Tropical, Morro Bento, Luanda. Garante já o teu ingresso.", "og_image": ""}', UTC_TIMESTAMP());
 
+-- >>> 004_v2_2_estado_vendas_categoria.sql
+-- =============================================================================
+-- V25 — O LEGADO · Migração 004 — versão 2.2: estado de venda por categoria
+-- INCREMENTAL: acrescenta apenas a coluna sales_status a ticket_categories.
+-- Valor por omissão 'abertas' = comportamento igual ao da v2.1 (a venda continua a
+-- depender do interruptor global, do stock, do período e da validação dos dados bancários).
+-- Não altera preços, stock, pedidos, pagamentos, ingressos nem utilizadores.
+-- Reverter: database/rollback/004_down.sql
+-- =============================================================================
+SET NAMES utf8mb4;
+
+-- abertas   = a categoria pode vender (se todas as outras condições se verificarem)
+-- suspensas = venda interrompida pela organização (mensagem “Vendas suspensas”)
+-- esgotadas = marcada como esgotada pela organização, mesmo que ainda haja stock
+ALTER TABLE ticket_categories
+  ADD COLUMN sales_status ENUM('abertas','suspensas','esgotadas') NOT NULL DEFAULT 'abertas' AFTER published;
+
 -- Registo das migrações incluídas
-INSERT INTO schema_migrations (version) VALUES ('001_initial_schema'), ('002_seed_official_data'), ('003_v2_checkout_vip_cms_gallery');
+INSERT INTO schema_migrations (version) VALUES ('001_initial_schema'), ('002_seed_official_data'), ('003_v2_checkout_vip_cms_gallery'), ('004_v2_2_estado_vendas_categoria');

@@ -50,7 +50,7 @@ export function ProofUpload({ code, token, method, onUploaded }: { code: string;
 
   return (
     <div className="rounded-[1.75rem] border border-fg/10 bg-paper p-6 shadow-soft md:p-8">
-      <p className="eyebrow">Depois de pagar</p>
+      <p className="eyebrow">Etapa 4 · Comprovativo</p>
       <h3 className="mt-2 text-3xl font-semibold">Carregar comprovativo</h3>
       <p className="mt-2 text-sm text-fg-muted">Depois de fazer a transferência, envie o comprovativo em PDF, JPG ou PNG (máx. 5 MB).</p>
 

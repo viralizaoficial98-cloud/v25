@@ -47,6 +47,8 @@ $r->get('/public/faqs', fn () => ContentService::listPublic('faqs'));
 $r->get('/public/media', fn (Request $q) => MediaService::listPublic((string) ($q->query['section'] ?? 'memorias'), (int) ($q->query['offset'] ?? 0), (int) ($q->query['limit'] ?? 12)));
 
 $r->post('/public/orders', fn (Request $q) => Response::json(OrderService::create($q), 201));
+// Cálculo prévio do total no servidor (etapa 1 do checkout; não reserva stock)
+$r->post('/public/orders/quote', fn (Request $q) => OrderService::quote($q));
 $r->get('/public/orders/{code}', function (Request $q) {
     OrderService::expireStale();
     return OrderService::customerView(OrderService::byToken($q));

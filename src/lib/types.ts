@@ -49,6 +49,8 @@ export interface EventSettings {
 
 export type SocialNetwork = 'instagram' | 'facebook' | 'youtube' | 'tiktok' | 'whatsapp' | 'spotify';
 
+export type SalesStatus = 'abertas' | 'suspensas' | 'esgotadas';
+
 export interface PublicTicketType {
   id: string;
   name: string;
@@ -59,6 +61,8 @@ export interface PublicTicketType {
   sale_mode: 'directo' | 'consulta';
   benefits: string[];
   badge: string;
+  /** Estado definido pela organização: abertas | suspensas | esgotadas */
+  sales_status: SalesStatus;
   /** false enquanto o administrador não definir a quantidade disponível */
   stock_defined: boolean;
   available: number;

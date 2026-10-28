@@ -70,7 +70,7 @@ export default function OrderPage() {
     preferred === 'express' ? (order.payment.express_number ? 'express' : 'transferencia') : order.payment.iban || order.payment.account_number ? 'transferencia' : 'express';
   const done = ['aprovado', 'emitido'].includes(order.status);
   // Etapas do checkout: 4 = pagamento, 5 = confirmação (em análise); concluídas após aprovação
-  const current = canPay ? 3 : inReview ? 4 : done ? 5 : 3;
+  const current = canPay ? 2 : inReview ? 4 : done ? 4 : 2;
   const showSteps = order.status !== 'cancelado';
   const chooseMethod = (m: PaymentMethod) => {
     setMethod(m);
@@ -145,7 +145,7 @@ export default function OrderPage() {
           {inReview && (
             <div className="relative overflow-hidden rounded-[1.75rem] border border-gold/40 bg-paper p-6 shadow-card md:p-8">
               <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-gold-metal" />
-              <p className="eyebrow">Etapa 5 · Confirmação</p>
+              <p className="eyebrow">Etapa 4 · Comprovativo enviado</p>
               <h2 className="mt-3 flex items-center gap-3 font-display text-3xl font-semibold tracking-wide text-fg md:text-4xl">
                 <Clock3 className="h-8 w-8 shrink-0 text-gold" aria-hidden /> PAGAMENTO EM ANÁLISE
               </h2>

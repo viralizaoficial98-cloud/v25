@@ -12,6 +12,8 @@ conjunto de caracteres **utf8mb4** (`utf8mb4_unicode_ci`). Todas as datas são g
 | `backend/app/database/migrations/001_initial_schema.sql` | Tabelas, índices, chaves, perfis e permissões |
 | `backend/app/database/migrations/002_seed_official_data.sql` | Dados oficiais: evento, dados bancários, FAQ base (sem preços inventados) |
 | `backend/app/database/migrations/003_v2_checkout_vip_cms_gallery.sql` | v2: CMS, galeria de eventos, VIP, histórico de preços, método/origem do pedido, categorias oficiais (só se não existirem) |
+| `backend/app/database/migrations/004_v2_2_estado_vendas_categoria.sql` | v2.2: `ticket_categories.sales_status` (`abertas`/`suspensas`/`esgotadas`, por omissão `abertas`) |
+| `backend/app/database/rollback/004_down.sql` | Reverte apenas a 004 (ver `ACTUALIZACAO_V2_2.md`) |
 | `backend/app/database/rollback/003_down.sql` | Reverte apenas a 003 (ver `ACTUALIZACAO_V2.md`) |
 | `backend/app/bin/migrate.php` | Aplica migrações pendentes (`--status` para listar) |
 | `scripts/build-mysql-schema.mjs` | Regenera o ficheiro de instalação a partir das migrações |

@@ -86,7 +86,8 @@ try {
   const out = migrate();
   assert.match(out, /A aplicar 003_v2_checkout_vip_cms_gallery\.\.\. ok/);
   assert.doesNotMatch(out, /001_initial_schema|002_seed/, 'reaplicou migrações antigas');
-  ok('bin/migrate.php aplicou apenas a 003');
+  assert.match(out, /A aplicar 004_v2_2_estado_vendas_categoria\.\.\. ok/);
+  ok('bin/migrate.php aplicou apenas as pendentes (003 e 004), nunca 001/002');
 
   const data1 = await dump(before);
   for (const k of Object.keys(data0)) {
@@ -116,6 +117,22 @@ try {
 
   assert.match(migrate(), /Nenhuma migração pendente/);
   ok('Segunda execução: nenhuma migração pendente (idempotente)');
+
+  // ── v2.1 → v2.2 (estado real da produção: 001–003 aplicadas): só a 004 ─────
+  const [[st]] = await root.query("SELECT GROUP_CONCAT(DISTINCT sales_status) s FROM ticket_categories");
+  assert.equal(st.s, 'abertas', 'categorias existentes ficam “abertas” (comportamento igual ao da v2.1)');
+  const pricesBefore = JSON.stringify((await root.query('SELECT id, price_kz, quantity_total, quantity_sold FROM ticket_categories ORDER BY id'))[0]);
+  await root.query(readFileSync('backend/app/database/rollback/004_down.sql', 'utf8'));
+  const [[col0]] = await root.query("SELECT COUNT(*) n FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'ticket_categories' AND column_name = 'sales_status'");
+  assert.equal(Number(col0.n), 0);
+  assert.match(migrate('--status'), /\[x\] 003_v2_checkout_vip_cms_gallery\.sql\n\[ \] 004_v2_2_estado_vendas_categoria\.sql/);
+  const out4 = migrate();
+  assert.match(out4, /A aplicar 004_v2_2_estado_vendas_categoria\.\.\. ok/);
+  assert.doesNotMatch(out4, /00[123]_/, 'reaplicou migrações antigas');
+  assert.equal(JSON.stringify((await root.query('SELECT id, price_kz, quantity_total, quantity_sold FROM ticket_categories ORDER BY id'))[0]), pricesBefore, 'preços/stock alterados');
+  const data4 = await dump(before);
+  for (const k of ['users', 'orders', 'order_items', 'payments', 'tickets', 'settings']) assert.equal(data4[k], data1[k], `dados alterados em ${k}`);
+  ok('v2.1 → v2.2: com 001–003 aplicadas, migrate.php aplica só a 004; preços, stock, pedidos e utilizadores intactos; 004_down.sql reverte e reaplica');
 
   // ── Rollback e reaplicação ───────────────────────────────────────────────
   await root.query(readFileSync('backend/app/database/rollback/003_down.sql', 'utf8'));

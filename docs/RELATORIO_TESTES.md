@@ -1,5 +1,26 @@
 # Relatório de testes
 
+## Versão 2.2 (gestão comercial por categoria, popup de compra) — 28/10/2026
+
+| Suite | Resultado |
+|---|---|
+| `npm run typecheck`, `npm run build`, `php -l` em todo o backend | OK |
+| `npm test` | **38/38** (estados de venda, abertura do popup com total do servidor, extensão do comprovativo) |
+| `npm run test:api` | **27/27 + 20/20** |
+| `npm run test:upgrade` | **9/9** — inclui o caso real da produção (001–003 aplicadas → só a 004; preços, stock e pedidos intactos; `004_down.sql` e reaplicação) |
+| `npm run test:e2e` | **15/15 etapas** — compra Normal pelo popup no telemóvel, Premium no computador, VIP, suspender/reabrir Premium no painel |
+| Staging Apache local (`/home/renewangola`, v2.1 → v2.2) | só a 004 aplicada; `.env`, `api/.user.ini` e `.htaccess` com o mesmo MD5; categorias, pedidos e utilizadores iguais |
+
+Novos casos cobertos na API: cálculo prévio (`/public/orders/quote`) com preço da base de dados, limite por pedido, tipo
+inválido, VIP recusado e sem reservar stock; categoria suspensa/esgotada recusada no cálculo e no pedido; guardar sem o campo
+mantém o estado; Financeiro não pode alterar categorias (403); VIP suspenso não aceita solicitações; alterações auditadas;
+auditoria do pedido visível ao Financeiro; comprovativo com extensão diferente do conteúdo, extensão `.php` e PDF com
+JavaScript recusados.
+
+Defeitos encontrados e corrigidos durante a v2.2: variável `$now` perdida na refactorização das regras de venda (erro 500 ao
+criar pedidos, apanhado pelos testes antes do commit); nome do titular partido a meio da palavra no telemóvel.
+
+
 ## Versão 2.1 (logótipo no menu, compra Normal/Premium, validação dos dados bancários) — 27/10/2026
 
 | Suite | Resultado |

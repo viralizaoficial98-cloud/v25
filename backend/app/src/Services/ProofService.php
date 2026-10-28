@@ -57,6 +57,16 @@ final class ProofService
         if ($mime !== 'application/pdf' && @getimagesize($tmp) === false) {
             throw new ApiError('FICHEIRO_TIPO_INVALIDO', 415);
         }
+        // A extensão declarada tem de corresponder ao tipo real (ex.: “.pdf” que afinal é imagem → recusado)
+        $ext = strtolower(pathinfo((string) ($f['name'] ?? ''), PATHINFO_EXTENSION));
+        $allowedExt = ['application/pdf' => ['pdf'], 'image/jpeg' => ['jpg', 'jpeg'], 'image/png' => ['png']];
+        if (!in_array($ext, $allowedExt[$mime], true)) {
+            throw new ApiError('FICHEIRO_TIPO_INVALIDO', 415);
+        }
+        // PDF com código activo (JavaScript, acções de arranque, ficheiros embebidos) não é aceite
+        if ($mime === 'application/pdf' && preg_match('#/(JavaScript|Launch|EmbeddedFile|OpenAction\s*<<[^>]*/JS)\b#', (string) file_get_contents($tmp))) {
+            throw new ApiError('FICHEIRO_TIPO_INVALIDO', 415);
+        }
         $sha = hash_file('sha256', $tmp);
         $dupOther = Db::value('SELECT order_id FROM payment_proofs WHERE sha256 = :s AND order_id <> :o LIMIT 1', ['s' => $sha, 'o' => $o['id']]);
         if ($dupOther) {

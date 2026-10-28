@@ -336,6 +336,11 @@ test('4. upload seguro do comprovativo (não aprova o pagamento)', async () => {
   err(await upload(order.order_code, order.access_token, Buffer.from('<html><script>alert(1)</script></html>'), 'falso.pdf', 'application/pdf'), 'FICHEIRO_TIPO_INVALIDO', 415);
   err(await upload(order.order_code, order.access_token, Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(5.5 * 1024 * 1024)]), 'grande.pdf', 'application/pdf'), 'FICHEIRO_DEMASIADO_GRANDE', 413);
   err(await upload(order.order_code, 'x', PDF, 'c.pdf', 'application/pdf'), 'ACESSO_INVALIDO', 403);
+  // Extensão tem de corresponder ao tipo real; PDF com código activo recusado
+  err(await upload(order.order_code, order.access_token, PNG, 'comprovativo.pdf', 'application/pdf'), 'FICHEIRO_TIPO_INVALIDO', 415);
+  err(await upload(order.order_code, order.access_token, PDF, 'comprovativo.php', 'application/pdf'), 'FICHEIRO_TIPO_INVALIDO', 415);
+  const jsPdf = Buffer.concat([Buffer.from('%PDF-1.4\n1 0 obj << /Type /Catalog /OpenAction 2 0 R >> endobj\n2 0 obj << /S /JavaScript /JS (app.alert(1)) >> endobj\n'), PDF.subarray(9)]);
+  err(await upload(order.order_code, order.access_token, jsPdf, 'com-js.pdf', 'application/pdf'), 'FICHEIRO_TIPO_INVALIDO', 415);
   const r = await upload(order.order_code, order.access_token, PDF, 'comprovativo.pdf', 'application/pdf');
   assert.equal(r.status, 201, JSON.stringify(r.data));
   assert.equal(r.data.status, 'comprovativo_enviado');

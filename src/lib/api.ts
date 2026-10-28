@@ -58,6 +58,13 @@ export function createOrder(i: CreateOrderInput) {
 const tokenHeader = (token: string) => ({ 'X-Order-Token': token });
 const orderPath = (code: string) => `/public/orders/${encodeURIComponent(code)}`;
 
+/** Etapa 1: preço em vigor e total calculados no servidor (não reserva stock). */
+export const quoteOrder = (ticketTypeId: string, quantity: number) =>
+  api<{ ticket_type_id: string; name: string; quantity: number; unit_price_kz: number; total_kz: number; available: number; max_per_order: number; persons_per_ticket: number }>(
+    '/public/orders/quote',
+    { json: { ticket_type_id: ticketTypeId, quantity } },
+  );
+
 export const getOrder = (code: string, token: string) => api<CustomerOrder>(orderPath(code), { headers: tokenHeader(token) });
 export const confirmReservation = (code: string, token: string) => api(`${orderPath(code)}/confirm`, { method: 'POST', headers: tokenHeader(token) });
 export const cancelOrder = (code: string, token: string) => api(`${orderPath(code)}/cancel`, { method: 'POST', headers: tokenHeader(token) });

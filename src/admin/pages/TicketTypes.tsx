@@ -6,7 +6,9 @@ import { Dialog } from '@/components/ui/dialog';
 import { api } from '@/lib/http';
 import { errorMessage } from '@/lib/errors';
 import { formatDateTime, formatKz, fromLuandaInput, toLuandaInput } from '@/lib/format';
-import type { TicketTypeRow } from '@/lib/types';
+import type { SalesStatus, TicketTypeRow } from '@/lib/types';
+
+const STATUS_LABEL: Record<SalesStatus, string> = { abertas: 'Vendas abertas', suspensas: 'Vendas suspensas', esgotadas: 'Esgotada' };
 import { useAsync } from '@/hooks/useAsync';
 import { useSettings } from '@/hooks/useSettings';
 import { Label, Loadable, PageHeader, Panel, Table, Td, Toggle } from '../ui';
@@ -26,13 +28,14 @@ type Draft = {
   published: boolean;
   sort_order: string;
   sale_mode: 'directo' | 'consulta';
+  sales_status: SalesStatus;
   benefits: string;
   badge: string;
 };
 
 const EMPTY: Draft = {
   name: '', lot_label: '', description: '', price_kz: '', quantity_total: '', max_per_order: '4', max_per_customer: '10',
-  persons_per_ticket: '1', sales_start: '', sales_end: '', published: false, sort_order: '0', sale_mode: 'directo', benefits: '', badge: '',
+  persons_per_ticket: '1', sales_start: '', sales_end: '', published: false, sort_order: '0', sale_mode: 'directo', sales_status: 'abertas', benefits: '', badge: '',
 };
 
 /** Motivos pelos quais uma categoria não está à venda no site (mesmas regras do servidor). */
@@ -42,6 +45,8 @@ function blockers(t: TicketTypeRow, salesOpen: boolean, paymentReady: boolean): 
   const now = Date.now();
   if (!t.published) r.push('categoria não publicada');
   if (t.price_kz === null) r.push('sem preço');
+  if (t.sales_status === 'suspensas') r.push('vendas suspensas nesta categoria');
+  if (t.sales_status === 'esgotadas') r.push('marcada como esgotada');
   if (t.quantity_total === 0) r.push('quantidade por definir');
   else if (t.quantity_total - t.quantity_reserved - t.quantity_sold <= 0) r.push('esgotado');
   if (t.sales_start && new Date(t.sales_start).getTime() > now) r.push(`vendas só a partir de ${formatDateTime(t.sales_start)}`);
@@ -70,7 +75,7 @@ export default function TicketTypes() {
             id: t.id, name: t.name, lot_label: t.lot_label, description: t.description, price_kz: t.price_kz?.toString() ?? '',
             quantity_total: String(t.quantity_total), max_per_order: String(t.max_per_order), max_per_customer: String(t.max_per_customer),
             persons_per_ticket: String(t.persons_per_ticket), sales_start: toLuandaInput(t.sales_start), sales_end: toLuandaInput(t.sales_end),
-            published: t.published, sort_order: String(t.sort_order), sale_mode: t.sale_mode ?? 'directo',
+            published: t.published, sort_order: String(t.sort_order), sale_mode: t.sale_mode ?? 'directo', sales_status: t.sales_status ?? 'abertas',
             benefits: (t.benefits ?? []).join('\n'), badge: t.badge ?? '',
           }
         : EMPTY,
@@ -100,6 +105,7 @@ export default function TicketTypes() {
       published: draft.published,
       sort_order: Number(draft.sort_order) || 0,
       sale_mode: draft.sale_mode,
+      sales_status: draft.sales_status,
       benefits: draft.benefits.split('\n').map((b) => b.trim()).filter(Boolean),
       badge: draft.badge.trim(),
     };
@@ -122,6 +128,19 @@ export default function TicketTypes() {
     try {
       await api(`/admin/ticket-types/${t.id}`, { method: 'DELETE' });
       setMsg('Categoria eliminada.');
+    } catch (e) {
+      setMsg(errorMessage(e));
+    }
+    await reload();
+  };
+
+  // Mudança rápida do estado de venda de uma categoria (efeito imediato no site)
+  const setStatus = async (t: TicketTypeRow, status: SalesStatus) => {
+    if (status === t.sales_status) return;
+    if (!confirm(`Alterar “${t.name}” para “${STATUS_LABEL[status]}”? O site é actualizado de imediato.`)) return;
+    try {
+      await api(`/admin/ticket-types/${t.id}`, { method: 'PUT', json: { ...t, sales_status: status } });
+      setMsg(`${t.name}: ${STATUS_LABEL[status]}.`);
     } catch (e) {
       setMsg(errorMessage(e));
     }
@@ -169,7 +188,14 @@ export default function TicketTypes() {
               const b = blockers(t, settings.sales_open, settings.payment_ready);
               return (
                 <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
-                  <span className="font-semibold">{t.name}</span>
+                  <span className="flex items-center gap-3">
+                    <span className="font-semibold">{t.name}</span>
+                    <select aria-label={`Estado de venda de ${t.name}`} className="admin-input h-8 w-auto py-0 text-xs" value={t.sales_status} onChange={(e) => setStatus(t, e.target.value as SalesStatus)}>
+                      <option value="abertas">Abertas</option>
+                      <option value="suspensas">Suspensas</option>
+                      <option value="esgotadas">Esgotada</option>
+                    </select>
+                  </span>
                   {t.sale_mode === 'consulta' ? (
                     <Badge tone="info">Por consulta — só por proposta VIP</Badge>
                   ) : b.length === 0 ? (
@@ -196,7 +222,10 @@ export default function TicketTypes() {
                 <Td>{t.quantity_total} / {t.quantity_reserved} / {t.quantity_sold}<span className="block text-xs text-fg/50">Disponíveis: {t.quantity_total - t.quantity_reserved - t.quantity_sold}</span></Td>
                 <Td className="text-xs">{t.max_per_order}/pedido · {t.max_per_customer}/cliente{t.persons_per_ticket > 1 && <span className="block">{t.persons_per_ticket} pessoas/ingresso</span>}</Td>
                 <Td className="text-xs">{t.sales_start ? formatDateTime(t.sales_start) : 'Imediato'} → {t.sales_end ? formatDateTime(t.sales_end) : 'sem fim'}</Td>
-                <Td>{t.published ? <Badge tone="ok">Publicado</Badge> : <Badge>Rascunho</Badge>}</Td>
+                <Td>
+                  {t.published ? <Badge tone="ok">Visível</Badge> : <Badge>Oculta</Badge>}
+                  <span className="mt-1 block"><Badge tone={t.sales_status === 'abertas' ? 'info' : 'warn'}>{STATUS_LABEL[t.sales_status ?? 'abertas']}</Badge></span>
+                </Td>
                 <Td className="whitespace-nowrap">
                   <Button size="icon" variant="ghost" aria-label={`Editar ${t.name}`} onClick={() => edit(t)}><Pencil className="h-4 w-4" /></Button>
                   <Button size="icon" variant="ghost" aria-label={`Histórico de preços de ${t.name}`} onClick={() => setHistoryOf(t)}><History className="h-4 w-4" /></Button>
@@ -248,7 +277,15 @@ export default function TicketTypes() {
             <div><Label htmlFor="ts">Ordem</Label><input id="ts" type="number" className="admin-input" value={draft.sort_order} onChange={set('sort_order')} /></div>
             <div><Label htmlFor="tss">Início das vendas (hora de Luanda)</Label><input id="tss" type="datetime-local" className="admin-input" value={draft.sales_start} onChange={set('sales_start')} /></div>
             <div><Label htmlFor="tse">Fim das vendas (hora de Luanda)</Label><input id="tse" type="datetime-local" className="admin-input" value={draft.sales_end} onChange={set('sales_end')} /></div>
-            <div className="sm:col-span-2"><Toggle checked={draft.published} onChange={(v) => setDraft({ ...draft, published: v })} label="Publicado no site" /></div>
+            <div>
+              <Label htmlFor="tst">Estado das vendas desta categoria</Label>
+              <select id="tst" className="admin-input" value={draft.sales_status} onChange={(e) => setDraft({ ...draft, sales_status: e.target.value as SalesStatus })}>
+                <option value="abertas">Abertas (se as vendas gerais estiverem abertas)</option>
+                <option value="suspensas">Suspensas</option>
+                <option value="esgotadas">Esgotada</option>
+              </select>
+            </div>
+            <div className="self-end pb-2"><Toggle checked={draft.published} onChange={(v) => setDraft({ ...draft, published: v })} label="Publicado no site" /></div>
             {formError && <Alert tone="bad" className="sm:col-span-2">{formError}</Alert>}
             <div className="flex gap-2 sm:col-span-2">
               <Button type="submit" loading={busy}>Guardar</Button>

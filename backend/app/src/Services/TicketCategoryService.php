@@ -21,7 +21,8 @@ final class TicketCategoryService
             $consulta = ($t['sale_mode'] ?? 'directo') === 'consulta';
             $available = (int) $t['quantity_total'] - (int) $t['quantity_reserved'] - (int) $t['quantity_sold'];
             // Compra possível só com: vendas abertas, preço, stock real, período válido e pagamento validado
-            $onSale = !$consulta && $paymentReady && (bool) $e['sales_open'] && $t['price_kz'] !== null && $available > 0
+            $status = (string) ($t['sales_status'] ?? 'abertas');
+            $onSale = !$consulta && $status === 'abertas' && $paymentReady && (bool) $e['sales_open'] && $t['price_kz'] !== null && $available > 0
                 && ($t['sales_start'] === null || strtotime($t['sales_start'] . ' UTC') <= $now)
                 && ($t['sales_end'] === null || strtotime($t['sales_end'] . ' UTC') > $now);
             return [
@@ -33,6 +34,7 @@ final class TicketCategoryService
                 'sale_mode' => $consulta ? 'consulta' : 'directo',
                 'benefits' => self::benefits($t['benefits'] ?? null),
                 'badge' => (string) ($t['badge'] ?? ''),
+                'sales_status' => $status,
                 'stock_defined' => (int) $t['quantity_total'] > 0,
                 'available' => max((int) $t['quantity_total'] - (int) $t['quantity_reserved'] - (int) $t['quantity_sold'], 0),
                 'quantity_total' => (int) $t['quantity_total'],
@@ -56,7 +58,7 @@ final class TicketCategoryService
         return [
             'id' => $t['id'], 'name' => $t['name'], 'lot_label' => $t['lot_label'], 'description' => $t['description'],
             'price_kz' => Util::money($t['price_kz']), 'quantity_total' => (int) $t['quantity_total'],
-            'sale_mode' => $t['sale_mode'] ?? 'directo', 'benefits' => self::benefits($t['benefits'] ?? null), 'badge' => (string) ($t['badge'] ?? ''),
+            'sale_mode' => $t['sale_mode'] ?? 'directo', 'sales_status' => (string) ($t['sales_status'] ?? 'abertas'), 'benefits' => self::benefits($t['benefits'] ?? null), 'badge' => (string) ($t['badge'] ?? ''),
             'quantity_reserved' => (int) $t['quantity_reserved'], 'quantity_sold' => (int) $t['quantity_sold'],
             'max_per_order' => (int) $t['max_per_order'], 'max_per_customer' => (int) $t['max_per_customer'],
             'persons_per_ticket' => (int) $t['persons_per_ticket'], 'sales_start' => Util::iso($t['sales_start']),
@@ -114,7 +116,15 @@ final class TicketCategoryService
         if ($start && $end && $end <= $start) {
             throw new ApiError('PERIODO_INVALIDO', 422);
         }
-        return [
+        $extra = [];
+        if (array_key_exists('sales_status', $in)) {
+            // Só se vier no pedido: guardar sem o campo mantém o estado actual
+            if (!in_array($in['sales_status'], ['abertas', 'suspensas', 'esgotadas'], true)) {
+                throw new ApiError('VALOR_INVALIDO', 422, ['campo' => 'sales_status']);
+            }
+            $extra['sales_status'] = $in['sales_status'];
+        }
+        return $extra + [
             'name' => $name,
             'lot_label' => mb_substr(trim((string) ($in['lot_label'] ?? '')), 0, 60),
             'description' => mb_substr(trim((string) ($in['description'] ?? '')), 0, 2000),

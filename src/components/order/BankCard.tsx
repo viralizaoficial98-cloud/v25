@@ -28,7 +28,7 @@ function Line({ label, value, copy, mono = true, accent }: { label: string; valu
     <div className="flex flex-wrap items-end justify-between gap-3 border-b border-fg/10 pb-4 last:border-0 last:pb-0">
       <div className="min-w-0">
         <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fg-muted">{label}</dt>
-        <dd className={cn('mt-1 break-all text-lg text-fg', mono && 'font-mono tracking-wider', accent && 'font-semibold text-gold-deep')}>{value}</dd>
+        <dd className={cn('mt-1 text-lg text-fg', mono ? 'break-all font-mono tracking-wider' : 'break-words', accent && 'font-semibold text-gold-deep')}>{value}</dd>
       </div>
       {copy && <CopyButton value={copy} label="Copiar" />}
     </div>
@@ -36,7 +36,7 @@ function Line({ label, value, copy, mono = true, accent }: { label: string; valu
 }
 
 /**
- * Etapa 4 — dados oficiais de pagamento (vindos da base de dados, só mostrados
+ * Etapa 3 — dados oficiais de pagamento (vindos da base de dados, só mostrados
  * na página do pedido) com escolha entre Transferência Bancária e Express.
  */
 export function BankCard({ method, onMethod, saving, confirmed, accountName, bankName, accountNumber, iban, expressNumber, amount, reference }: Props) {
@@ -64,7 +64,7 @@ export function BankCard({ method, onMethod, saving, confirmed, accountName, ban
   return (
     <div className="relative overflow-hidden rounded-[1.75rem] border border-gold/40 bg-paper p-6 shadow-card md:p-8">
       <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-gold-metal" />
-      <p className="eyebrow">Etapa 4 · Pagamento</p>
+      <p className="eyebrow">Etapa 3 · Pagamento</p>
       <h2 className="mt-2 font-display text-3xl font-semibold text-fg">Escolha como pagar</h2>
 
       <div role="tablist" aria-label="Método de pagamento" className="mt-6 flex gap-1 rounded-2xl bg-paper-muted p-1">
@@ -80,7 +80,7 @@ export function BankCard({ method, onMethod, saving, confirmed, accountName, ban
           </p>
         ) : (
           <dl className="space-y-4">
-            {accountName && <Line label="Titular" value={accountName} mono={false} />}
+            {accountName && <Line label="Titular / destinatário" value={accountName} copy={accountName} mono={false} />}
             {active === 'transferencia' ? (
               <>
                 {bankName && <Line label="Banco" value={bankName} mono={false} />}

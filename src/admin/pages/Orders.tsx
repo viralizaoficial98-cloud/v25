@@ -113,11 +113,22 @@ export default function Orders({ preset }: { preset?: 'review' }) {
 interface Proof { id: string; mime_type: string; size_bytes: number; status: string; uploaded_at: string; duplicate_of: string | null }
 interface TicketRow { id: string; ticket_code: string; seq: number; status: string; checked_in_at: string | null }
 interface EventRow { id: number; status: OrderStatus; note: string | null; created_at: string }
+interface AuditRow { action: string; actor_email: string | null; created_at: string; details: Record<string, unknown> }
+
+const AUDIT_LABEL: Record<string, string> = {
+  'pedido.em_analise': 'Marcado em análise',
+  'pagamento.aprovado': 'Pagamento aprovado e bilhetes emitidos',
+  'pagamento.rejeitado': 'Pagamento rejeitado',
+  'pedido.cancelado': 'Pedido cancelado',
+  'ingresso.reenviado': 'Bilhetes reenviados',
+  'pedido.link_gerado': 'Nova ligação para o cliente',
+  'comprovativo.consultado': 'Comprovativo consultado',
+};
 
 function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => void; onChanged: () => void }) {
   const { can } = useAdmin();
   const { data, loading, error, reload } = useAsync(
-    () => api<{ order: Row; proofs: Proof[]; tickets: TicketRow[]; events: EventRow[] }>(`/admin/orders/${id}`),
+    () => api<{ order: Row; proofs: Proof[]; tickets: TicketRow[]; events: EventRow[]; audit?: AuditRow[] }>(`/admin/orders/${id}`),
     [id],
   );
 
@@ -248,6 +259,20 @@ function OrderDetail({ id, onClose, onChanged }: { id: string; onClose: () => vo
                 ))}
               </ol>
             </div>
+
+            {(data.audit?.length ?? 0) > 0 && (
+              <div>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-gold">Auditoria (quem fez o quê)</h3>
+                <ol className="space-y-1 text-xs text-fg/65">
+                  {data.audit!.map((a, i) => (
+                    <li key={i}>
+                      {formatDateTime(a.created_at)} — {AUDIT_LABEL[a.action] ?? a.action} · {a.actor_email ?? 'sistema'}
+                      {typeof a.details.motivo === 'string' && `: ${a.details.motivo}`}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
 
             {mode === 'approve' && (
               <form

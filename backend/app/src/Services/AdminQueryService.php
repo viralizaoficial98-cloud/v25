@@ -86,6 +86,16 @@ final class AdminQueryService
             'events' => array_map(fn ($h) => [
                 'id' => (int) $h['id'], 'status' => $h['status'], 'note' => $h['note'], 'created_at' => Util::iso(substr((string) $h['created_at'], 0, 19)),
             ], Db::all('SELECT * FROM transaction_history WHERE order_id = :o ORDER BY created_at, id', ['o' => $id])),
+            // Auditoria deste pedido: análise, aprovação/rejeição, cancelamento, consultas do comprovativo
+            'audit' => array_map(fn ($a) => [
+                'action' => $a['action'], 'actor_email' => $a['user_email'], 'created_at' => Util::iso($a['created_at']),
+                'details' => json_decode((string) $a['details'], true) ?? [],
+            ], Db::all(
+                "SELECT a.* FROM audit_logs a WHERE (a.entity = 'order' AND a.entity_id = :o)
+                   OR (a.entity = 'payment_proof' AND a.entity_id IN (SELECT id FROM payment_proofs WHERE order_id = :o2))
+                 ORDER BY a.id DESC LIMIT 100",
+                ['o' => $id, 'o2' => $id],
+            )),
         ];
     }
 

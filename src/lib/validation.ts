@@ -85,6 +85,10 @@ export async function validateProofFile(file: File): Promise<{ ok: true; mime: (
   else if (is(0xff, 0xd8, 0xff)) mime = 'image/jpeg';
   else if (is(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)) mime = 'image/png';
   if (!mime) return { ok: false, error: 'Formato não aceite. Envie PDF, JPG ou PNG.' };
+  // A extensão tem de corresponder ao conteúdo (o servidor repete esta verificação)
+  const ext = (file.name.split('.').pop() ?? '').toLowerCase();
+  const okExt = mime === 'application/pdf' ? ext === 'pdf' : mime === 'image/png' ? ext === 'png' : ext === 'jpg' || ext === 'jpeg';
+  if (!okExt) return { ok: false, error: 'A extensão do ficheiro não corresponde ao conteúdo. Envie o PDF, JPG ou PNG original.' };
   return { ok: true, mime };
 }
 

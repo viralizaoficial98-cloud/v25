@@ -84,25 +84,30 @@ async function uploadProof(page) {
   writeFileSync(file, await sharp({ create: { width: 600 + proofSeq, height: 400, channels: 3, background: '#ffffff' } }).png().toBuffer());
   await page.getByLabel('Ficheiro do comprovativo').setInputFiles(file);
   await page.getByRole('button', { name: 'Enviar comprovativo' }).click();
-  await page.getByRole('heading', { name: 'PAGAMENTO EM ANÁLISE' }).waitFor();
-  await page.getByText('O comprovativo ainda não confirma o pagamento.').waitFor();
-  await page.getByText('A aguardar confirmação de pagamento').first().waitFor();
+  // No popup: ecrã “Comprovativo enviado”; na página do pedido: “PAGAMENTO EM ANÁLISE”
+  await page.getByRole('heading', { name: /^(PAGAMENTO EM ANÁLISE|Comprovativo enviado)$/ }).waitFor();
+  await page.getByText('O comprovativo ainda não confirma o pagamento.').first().waitFor();
+  await page.getByText('Aguardando validação financeira').first().waitFor();
 }
 
+/** Compra pelo popup: etapas 1–2, devolve o código do pedido (etapa 3 visível). */
 async function buy(page, category, qty, who) {
   await page.goto(BASE + '/');
-  await card(page, category).getByRole('link', { name: /comprar bilhete/i }).click();
-  await page.getByRole('heading', { name: '1. Escolha o seu ingresso' }).waitFor();
-  const radio = page.getByRole('radio', { name: new RegExp(category) });
+  await card(page, category).getByRole('button', { name: /comprar bilhete/i }).click();
+  const dlg = page.getByRole('dialog');
+  await dlg.getByRole('heading', { name: '1. Seleção do bilhete' }).waitFor();
+  const radio = dlg.getByRole('radio', { name: new RegExp(`^${category}`) });
   if ((await radio.getAttribute('aria-checked')) !== 'true') throw new Error(`Categoria ${category} não pré-seleccionada`);
-  for (let i = 1; i < qty; i++) await page.getByRole('button', { name: 'Aumentar quantidade' }).click();
-  await page.getByRole('button', { name: 'Continuar' }).click();
-  await page.getByLabel('Nome completo').fill(who.name);
-  await page.getByLabel(/^Email/).fill(who.email);
-  await page.getByRole('textbox', { name: /Telefone/ }).fill(who.phone);
-  await page.getByRole('checkbox').check();
-  await page.getByRole('button', { name: /Rever o pedido/ }).click();
-  await page.getByRole('heading', { name: '3. Confirme o seu pedido' }).waitFor();
+  for (let i = 1; i < qty; i++) await dlg.getByRole('button', { name: 'Aumentar quantidade' }).click();
+  await dlg.getByRole('button', { name: 'Continuar' }).click();
+  await dlg.getByLabel('Nome completo').fill(who.name);
+  await dlg.getByLabel(/^Email/).fill(who.email);
+  await dlg.getByRole('textbox', { name: /Telefone/ }).fill(who.phone);
+  await dlg.getByRole('checkbox').check();
+  await dlg.getByRole('button', { name: /Confirmar pedido e ver pagamento/ }).click();
+  const ok = dlg.getByText(/^Pedido V25-[A-Z2-9]{6} registado$/);
+  await ok.waitFor();
+  return (await ok.innerText()).match(/V25-[A-Z2-9]{6}/)[0];
 }
 
 async function orderCode(page) {
@@ -135,7 +140,7 @@ try {
   await visitor.getByText('25 000 Kz').waitFor();
   await card(visitor, 'VIP').getByText('Por consulta', { exact: true }).first().waitFor();
   await visitor.getByText('A AGUARDAR ABERTURA DAS VENDAS').waitFor();
-  if (await visitor.getByRole('link', { name: /comprar bilhete/i }).count()) throw new Error('Compra disponível com vendas fechadas');
+  if (await visitor.getByRole('button', { name: /comprar bilhete/i }).count()) throw new Error('Compra disponível com vendas fechadas');
   const bg = await visitor.evaluate(() => getComputedStyle(document.body).backgroundColor);
   if (bg !== 'rgb(255, 255, 255)') throw new Error('Fundo não é branco: ' + bg);
   // Mesmo logótipo Renew (mesmo ficheiro) no cabeçalho, com link para o início, e no rodapé
@@ -187,7 +192,7 @@ try {
   // Vendas abertas mas coordenadas bancárias por validar: o site continua sem botão de compra
   await visitor.reload();
   await card(visitor, 'Normal').getByText('Brevemente').waitFor();
-  if (await visitor.getByRole('link', { name: /comprar/i }).count()) throw new Error('Compra disponível sem dados de pagamento validados');
+  if (await visitor.getByRole('button', { name: /comprar bilhete/i }).count()) throw new Error('Compra disponível sem dados de pagamento validados');
   await admin.getByRole('link', { name: 'Evento e conteúdos' }).click();
   await admin.getByText('Por validar — vendas bloqueadas').waitFor();
   await admin.getByRole('button', { name: 'Confirmar dados de pagamento' }).click();
@@ -199,7 +204,17 @@ try {
   await admin.getByRole('link', { name: 'Ingressos, lotes e stock' }).click();
   await admin.getByText('À venda — botão “Comprar bilhete” activo').first().waitFor();
   await shot(admin, '03c-estado-de-venda');
-  step('Gestão comercial: stock Normal 100 / Premium 50 / VIP 10, histórico de preços, vendas abertas; compra só depois de o administrador validar os dados bancários oficiais');
+  // Suspender e reabrir uma categoria no painel (efeito imediato no site, sem recompilar)
+  admin.once('dialog', (d) => d.accept());
+  await admin.getByLabel('Estado de venda de Premium').selectOption('suspensas');
+  await admin.getByText('Premium: Vendas suspensas.').waitFor();
+  await visitor.reload();
+  await card(visitor, 'Premium').getByText('Vendas suspensas').first().waitFor();
+  if (await card(visitor, 'Premium').getByRole('button', { name: /comprar bilhete/i }).count()) throw new Error('Premium suspensa com compra activa');
+  admin.once('dialog', (d) => d.accept());
+  await admin.getByLabel('Estado de venda de Premium').selectOption('abertas');
+  await admin.getByText('Premium: Vendas abertas.').waitFor();
+  step('Gestão comercial: stock Normal 100 / Premium 50 / VIP 10, histórico de preços, vendas abertas; compra só depois de validar os dados bancários; Premium suspensa e reaberta no painel (site actualizado sem recompilar)');
 
   // ── CMS: rascunho → pré-visualização → publicação ─────────────────────────
   const SLOGAN = 'Teste E2E — uma celebração para recordar.';
@@ -232,7 +247,7 @@ try {
   await admin.getByRole('button', { name: 'Publicar agora' }).click();
   await admin.getByText(/Publicado\. O site público/).waitFor();
   await visitor.reload();
-  await card(visitor, 'Normal').getByRole('link', { name: /comprar bilhete/i }).waitFor();
+  await card(visitor, 'Normal').getByRole('button', { name: /comprar bilhete/i }).waitFor();
   step('CMS: slogan editado em rascunho (invisível ao público), pré-visualizado, publicado e registado no histórico; botão “Comprar bilhete” configurado no painel');
 
   // ── Galeria dos eventos: álbum, upload múltiplo, publicação ───────────────
@@ -284,47 +299,55 @@ try {
   await client.goto(BASE + '/');
   await client.locator('#ingressos').scrollIntoViewIfNeeded();
   await shot(client, '06-ingressos-mobile');
-  await card(client, 'Normal').getByRole('link', { name: /comprar bilhete/i }).click();
-  await client.getByRole('button', { name: 'Aumentar quantidade' }).click();
-  await client.getByRole('button', { name: 'Continuar' }).click();
-  await client.getByLabel('Nome completo').fill('Maria da Silva');
-  await client.getByLabel(/^Email/).fill('maria@exemplo.ao');
-  await client.getByRole('textbox', { name: /Telefone/ }).fill('923 456 789');
-  await client.getByRole('button', { name: /Rever o pedido/ }).click();
-  await client.getByText('É necessário o seu consentimento para continuar.').waitFor();
-  await client.getByRole('checkbox').check();
-  await client.getByRole('button', { name: /Rever o pedido/ }).click();
-  await client.getByText('+244923456789').waitFor();
-  await client.getByText('Total a pagar').waitFor();
-  await client.getByRole('button', { name: 'Voltar e corrigir' }).click();
-  await client.getByLabel('Nome completo').fill('Maria da Silva Santos');
-  await client.getByRole('button', { name: /Rever o pedido/ }).click();
-  await client.getByText('Maria da Silva Santos').waitFor();
-  if (!(await client.getByText('25 000 Kz').count())) throw new Error('Resumo sem total 2 × 12 500');
-  await noOverflow(client, 'resumo do checkout');
-  await shot(client, '07-checkout-resumo-mobile');
-  await client.getByRole('button', { name: /Confirmar e avançar para pagamento/ }).click();
-  const code = await orderCode(client);
-  await client.getByText('Etapa 4 · Pagamento').waitFor();
-  await client.getByText(IBAN).waitFor();
-  await client.getByText('27 LUAS COMUNICACAO E MARKETING SU LDA').waitFor();
-  await client.getByRole('tab', { name: 'Transferência Express' }).click();
-  await client.getByText('920000000').waitFor();
-  await noOverflow(client, 'pagamento');
-  await shot(client, '08-pagamento-express-mobile');
+  await card(client, 'Normal').getByRole('button', { name: /comprar bilhete/i }).click();
+  const cdlg = client.getByRole('dialog');
+  await cdlg.getByRole('heading', { name: '1. Seleção do bilhete' }).waitFor();
+  if ((await cdlg.getByRole('radio', { name: /^Normal/ }).getAttribute('aria-checked')) !== 'true') throw new Error('Normal não pré-seleccionada');
+  await cdlg.getByRole('button', { name: 'Aumentar quantidade' }).click();
+  await cdlg.getByText('25 000 Kz').first().waitFor(); // 2 × 12 500 calculado pelo servidor
+  await shot(client, '07-popup-selecao-mobile');
+  await cdlg.getByRole('button', { name: 'Continuar' }).click();
+  await cdlg.getByLabel('Nome completo').fill('Maria da Silva');
+  await cdlg.getByLabel(/^Email/).fill('maria@exemplo.ao');
+  await cdlg.getByRole('textbox', { name: /Telefone/ }).fill('923 456 789');
+  await cdlg.getByRole('button', { name: /Confirmar pedido e ver pagamento/ }).click();
+  await cdlg.getByText('É necessário o seu consentimento para continuar.').waitFor();
+  await cdlg.getByRole('button', { name: 'Voltar' }).click();
+  await cdlg.getByRole('heading', { name: '1. Seleção do bilhete' }).waitFor();
+  if ((await cdlg.getByLabel('Quantidade de bilhetes').inputValue()) !== '2') throw new Error('Quantidade perdida ao voltar');
+  await cdlg.getByRole('button', { name: 'Continuar' }).click();
+  await cdlg.getByLabel('Nome completo').fill('Maria da Silva Santos');
+  await cdlg.getByRole('checkbox').check();
+  await noOverflow(client, 'popup — dados');
+  await shot(client, '08-popup-dados-mobile');
+  await cdlg.getByRole('button', { name: /Confirmar pedido e ver pagamento/ }).click();
+  const okMsg = cdlg.getByText(/^Pedido V25-[A-Z2-9]{6} registado$/);
+  await okMsg.waitFor();
+  const code = (await okMsg.innerText()).match(/V25-[A-Z2-9]{6}/)[0];
+  await cdlg.getByText('Etapa 3 · Pagamento').waitFor();
+  await cdlg.getByText(IBAN).waitFor();
+  await cdlg.getByText('27 LUAS COMUNICACAO E MARKETING SU LDA').waitFor();
+  await cdlg.getByText('Transfira exactamente').waitFor();
+  await cdlg.getByRole('tab', { name: 'Transferência Express' }).click();
+  await cdlg.getByText('920000000').waitFor();
+  await noOverflow(client, 'popup — pagamento');
+  await shot(client, '09-popup-pagamento-mobile');
+  await cdlg.getByRole('button', { name: /Já transferi/ }).click();
   await uploadProof(client);
-  await client.getByText(code).first().waitFor();
+  await cdlg.getByText(code).first().waitFor();
+  await shot(client, '10-popup-comprovativo-enviado-mobile');
+  await cdlg.getByRole('link', { name: 'Acompanhar o pedido' }).click();
+  if ((await orderCode(client)) !== code) throw new Error('Página do pedido diferente');
+  await client.getByRole('heading', { name: 'PAGAMENTO EM ANÁLISE' }).waitFor();
   await client.getByText('Transferência Express', { exact: true }).last().waitFor();
-  await noOverflow(client, 'pagamento em análise');
-  await shot(client, '09-pagamento-em-analise-mobile');
-  step(`Compra Normal ${code}: seleção (2 × 12 500), dados (+244), resumo com “voltar e corrigir”, pagamento Express, comprovativo → PAGAMENTO EM ANÁLISE`);
+  step(`Compra Normal ${code} pelo popup (telemóvel): categoria pré-seleccionada, 2 × 12 500 = 25 000 Kz calculado no servidor, dados +244 com consentimento, coordenadas oficiais, Express, comprovativo → Aguardando validação financeira`);
 
   // ── Compra Premium (desktop, transferência bancária) ──────────────────────
   const premium = await newPage('cliente-premium');
-  await buy(premium, 'Premium', 1, { name: 'João Baptista', email: 'joao@exemplo.ao', phone: '912 345 678' });
-  await premium.getByRole('button', { name: /Confirmar e avançar para pagamento/ }).click();
-  const codePremium = await orderCode(premium);
-  await premium.getByText(IBAN).waitFor();
+  const codePremium = await buy(premium, 'Premium', 1, { name: 'João Baptista', email: 'joao@exemplo.ao', phone: '912 345 678' });
+  await premium.getByRole('dialog').getByText(IBAN).waitFor();
+  await shot(premium, '11-popup-pagamento-desktop');
+  await premium.getByRole('dialog').getByRole('button', { name: /Já transferi/ }).click();
   await uploadProof(premium);
   step(`Compra Premium ${codePremium}: 25 000 Kz por transferência bancária, comprovativo enviado`);
 

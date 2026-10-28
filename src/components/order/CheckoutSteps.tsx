@@ -1,12 +1,12 @@
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
-export const CHECKOUT_STEPS = ['Seleção', 'Dados', 'Resumo', 'Pagamento', 'Confirmação'];
+export const CHECKOUT_STEPS = ['Seleção', 'Dados', 'Pagamento', 'Comprovativo'];
 
-/** Indicador das etapas do checkout (1–3 na página de compra, 4–5 na página do pedido). */
+/** Indicador das 4 etapas da compra (popup/checkout e página do pedido); `current` = 4 → todas concluídas. */
 export function CheckoutSteps({ current }: { current: number }) {
   return (
-    <ol className="grid grid-cols-5 gap-1.5 sm:gap-3" aria-label="Etapas da compra">
+    <ol className="grid grid-cols-4 gap-1.5 sm:gap-3" aria-label="Etapas da compra">
       {CHECKOUT_STEPS.map((label, i) => {
         const done = i < current;
         const active = i === current;

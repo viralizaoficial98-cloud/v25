@@ -75,6 +75,14 @@ writeFileSync(
     "\n-- Regista a migração (evita que bin/migrate.php a volte a aplicar)\nINSERT INTO schema_migrations (version) VALUES ('003_v2_checkout_vip_cms_gallery');\n",
 );
 cpSync('backend/app/database/rollback/003_down.sql', `${up}/003_rollback.sql`);
+// v2.2: migração 004 (estado de venda por categoria) — a única a aplicar numa base com 001–003
+writeFileSync(
+  `${up}/004_actualizacao_v2_2_phpmyadmin.sql`,
+  readFileSync('backend/app/database/migrations/004_v2_2_estado_vendas_categoria.sql', 'utf8') +
+    "\n-- Regista a migração (evita que bin/migrate.php a volte a aplicar)\nINSERT INTO schema_migrations (version) VALUES ('004_v2_2_estado_vendas_categoria');\n",
+);
+cpSync('backend/app/database/rollback/004_down.sql', `${up}/004_rollback.sql`);
+cpSync('docs/ACTUALIZACAO_V2_2.md', `${up}/LEIA-ME_ACTUALIZACAO_V2_2.md`);
 cpSync('public/.htaccess', `${up}/htaccess-principal-v2.txt`);
 cpSync('docs/ACTUALIZACAO_V2.md', `${up}/LEIA-ME_ACTUALIZACAO.md`);
 run('zip', ['-qr', '../v25-actualizacao-v2-public_html.zip', '.'], { cwd: `${up}/public_html` });

@@ -431,3 +431,79 @@ test('dados de pagamento: validação administrativa, alteração anula a confir
   await admin.put('/admin/settings', { express_number: before.express_number });
   await admin.post('/admin/settings/payment-confirmation', { confirm: true });
 });
+
+// =============================================================================
+// v2.2 — gestão comercial por categoria e cálculo prévio do total
+// =============================================================================
+test('v2.2: cálculo prévio do total no servidor com as mesmas regras de venda', async () => {
+  const n = (await admin.get('/admin/ticket-types')).data.find((t) => t.name === 'Normal');
+  const qt = await anon().post('/public/orders/quote', { ticket_type_id: n.id, quantity: 3 });
+  assert.equal(qt.status, 200, JSON.stringify(qt.data));
+  assert.equal(qt.data.unit_price_kz, 12500);
+  assert.equal(qt.data.total_kz, 37500);
+  assert.equal(qt.data.max_per_order, Math.min(n.max_per_order, n.quantity_total - n.quantity_reserved - n.quantity_sold));
+  // Preço vem sempre da base de dados (campos de preço enviados pelo cliente são ignorados)
+  assert.equal((await anon().post('/public/orders/quote', { ticket_type_id: n.id, quantity: 1, unit_price_kz: 1, total_kz: 1 })).data.total_kz, 12500);
+  err(await anon().post('/public/orders/quote', { ticket_type_id: n.id, quantity: n.max_per_order + 1 }), 'QUANTIDADE_INVALIDA', 422);
+  err(await anon().post('/public/orders/quote', { ticket_type_id: n.id, quantity: '2' }), 'QUANTIDADE_INVALIDA', 422);
+  err(await anon().post('/public/orders/quote', { ticket_type_id: cats.VIP.id, quantity: 1 }), 'INGRESSO_POR_CONSULTA', 422);
+  err(await anon().post('/public/orders/quote', { ticket_type_id: 'x', quantity: 1 }), 'INGRESSO_INEXISTENTE', 422);
+  // Não reserva stock
+  const after = (await admin.get('/admin/ticket-types')).data.find((t) => t.name === 'Normal');
+  assert.equal(after.quantity_reserved, n.quantity_reserved);
+});
+
+test('v2.2: estado de venda por categoria (abertas, suspensas, esgotadas) no painel, site e servidor', async () => {
+  const list = (await admin.get('/admin/ticket-types')).data;
+  const p = list.find((t) => t.name === 'Premium');
+  assert.equal(p.sales_status, 'abertas');
+  err(await fin.put(`/admin/ticket-types/${p.id}`, { ...p, sales_status: 'suspensas' }), 'SEM_PERMISSAO', 403);
+  err(await admin.put(`/admin/ticket-types/${p.id}`, { ...p, sales_status: 'fechada' }), 'VALOR_INVALIDO', 422);
+
+  // Suspensas: site sem compra, servidor recusa cálculo e pedido
+  const sus = await admin.put(`/admin/ticket-types/${p.id}`, { ...p, sales_status: 'suspensas' });
+  assert.equal(sus.data.sales_status, 'suspensas');
+  const pub = (await anon().get('/public/ticket-types')).data.find((t) => t.name === 'Premium');
+  assert.deepEqual([pub.sales_status, pub.on_sale], ['suspensas', false]);
+  err(await anon().post('/public/orders/quote', { ticket_type_id: p.id, quantity: 1 }), 'VENDAS_SUSPENSAS', 409);
+  err(await anon().post('/public/orders', buyer({ ticket_type_id: p.id, quantity: 1, guests_total: 1 })), 'VENDAS_SUSPENSAS', 409);
+
+  // Guardar sem o campo mantém o estado (painel antigo / outras edições)
+  const { sales_status: _omit, ...rest } = sus.data;
+  assert.equal((await admin.put(`/admin/ticket-types/${p.id}`, { ...rest, description: 'Actualizada' })).data.sales_status, 'suspensas');
+
+  // Esgotada por decisão da organização (mesmo com stock)
+  await admin.put(`/admin/ticket-types/${p.id}`, { ...p, sales_status: 'esgotadas' });
+  err(await anon().post('/public/orders/quote', { ticket_type_id: p.id, quantity: 1 }), 'ESGOTADO', 409);
+  assert.equal((await anon().get('/public/ticket-types')).data.find((t) => t.name === 'Premium').sales_status, 'esgotadas');
+
+  // Reabrir: volta a vender; preço continua 25 000 Kz (não alterado automaticamente)
+  await admin.put(`/admin/ticket-types/${p.id}`, { ...p, sales_status: 'abertas' });
+  const reopened = await anon().post('/public/orders/quote', { ticket_type_id: p.id, quantity: 2 });
+  assert.equal(reopened.data.total_kz, 50000);
+  const [{ n }] = await q("SELECT COUNT(*) AS n FROM audit_logs WHERE action = 'ingresso.alterado' AND entity_id = ?", [p.id]);
+  assert.ok(Number(n) >= 4, 'alterações auditadas');
+
+  // VIP suspenso: não aceita novas solicitações
+  const v = (await admin.get('/admin/ticket-types')).data.find((t) => t.name === 'VIP');
+  await admin.put(`/admin/ticket-types/${v.id}`, { ...v, sales_status: 'suspensas' });
+  err(await anon().post('/public/vip', { full_name: 'Outro Cliente', email: 'vip.suspenso@exemplo.ao', phone: '+244923111333', participants: 2, consent: true }), 'VIP_INDISPONIVEL', 409);
+  await admin.put(`/admin/ticket-types/${v.id}`, { ...v, sales_status: 'abertas' });
+});
+
+test('v2.2: painel financeiro vê a auditoria do pedido (aprovação, consultas do comprovativo)', async () => {
+  const o = (await anon().post('/public/orders', buyer({ quantity: 1, guests_total: 1 }))).data;
+  const proof = await sharp({ create: { width: 320, height: 200, channels: 3, background: '#fafafa' } }).png().toBuffer();
+  assert.equal((await anon().req('POST', `/public/orders/${o.order_code}/proofs`, { form: uploadForm(proof, 'c.png', 'image/png'), headers: { 'X-Order-Token': o.access_token } })).status, 201);
+  const id = await orderId(o.order_code);
+  const d0 = (await fin.get(`/admin/orders/${id}`)).data;
+  assert.equal(d0.order.status, 'comprovativo_enviado');
+  assert.equal((await fin.get(`/admin/proofs/${d0.proofs[0].id}/file`)).status, 200);
+  const ap = await fin.post(`/admin/orders/${id}/approve`, { payment_reference: `TRX-${o.order_code}`, amount_confirmed: 12500, method: 'transferencia' });
+  assert.equal(ap.status, 200, JSON.stringify(ap.data));
+  const d1 = (await fin.get(`/admin/orders/${id}`)).data;
+  const actions = d1.audit.map((a) => a.action);
+  assert.ok(actions.includes('pagamento.aprovado') && actions.includes('comprovativo.consultado'), JSON.stringify(actions));
+  assert.ok(d1.audit.every((a) => a.actor_email === 'financeiro@renewangola.online'));
+  assert.equal(d1.tickets.length, 1);
+});

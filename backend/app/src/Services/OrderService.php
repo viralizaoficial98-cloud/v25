@@ -69,6 +69,76 @@ final class OrderService
         }
     }
 
+    /**
+     * Regras de venda de uma categoria (únicas para o cálculo prévio e para a criação do pedido).
+     * A ordem define a mensagem mostrada ao comprador.
+     */
+    private static function assertSellable(array $e, ?array $t, int $qty): void
+    {
+        if (!$t || !$t['published']) {
+            throw new ApiError('INGRESSO_INEXISTENTE', 422);
+        }
+        if (($t['sale_mode'] ?? 'directo') === 'consulta') {
+            // VIP: só por proposta aprovada pela organização (VipService)
+            throw new ApiError('INGRESSO_POR_CONSULTA', 422);
+        }
+        if ((int) $t['quantity_total'] === 0) {
+            throw new ApiError('DISPONIBILIDADE_POR_ANUNCIAR', 409);
+        }
+        $status = (string) ($t['sales_status'] ?? 'abertas');
+        if ($status === 'esgotadas') {
+            throw new ApiError('ESGOTADO', 409);
+        }
+        if ($status === 'suspensas') {
+            throw new ApiError('VENDAS_SUSPENSAS', 409);
+        }
+        $now = time();
+        if (!$e['sales_open'] || $t['price_kz'] === null
+            || ($t['sales_start'] !== null && strtotime($t['sales_start'] . ' UTC') > $now)
+            || ($t['sales_end'] !== null && strtotime($t['sales_end'] . ' UTC') <= $now)) {
+            throw new ApiError('VENDAS_FECHADAS', 409);
+        }
+        // Sem coordenadas de pagamento validadas pela organização não se aceitam pedidos
+        if (!SettingsService::paymentReady()) {
+            throw new ApiError('PAGAMENTO_POR_VALIDAR', 409);
+        }
+        if ($qty < 1 || $qty > (int) $t['max_per_order']) {
+            throw new ApiError('QUANTIDADE_INVALIDA', 422);
+        }
+        if ((int) $t['quantity_total'] - (int) $t['quantity_reserved'] - (int) $t['quantity_sold'] < $qty) {
+            throw new ApiError('ESGOTADO', 409);
+        }
+    }
+
+    /**
+     * Cálculo prévio (etapa 1 do checkout): preço em vigor e total calculados no servidor,
+     * com as mesmas regras de venda. Não reserva stock nem cria nada.
+     */
+    public static function quote(Request $req): array
+    {
+        RateLimiter::hit('quote_ip', $req->ip(), 120, 600);
+        $in = $req->json();
+        $categoryId = (string) ($in['ticket_type_id'] ?? '');
+        $qty = $in['quantity'] ?? null;
+        if (!Util::isUuid($categoryId)) {
+            throw new ApiError('INGRESSO_INEXISTENTE', 422);
+        }
+        if (!is_int($qty)) {
+            throw new ApiError('QUANTIDADE_INVALIDA', 422);
+        }
+        self::expireStale();
+        $e = SettingsService::event();
+        $t = Db::one('SELECT * FROM ticket_categories WHERE id = :id AND event_id = :e', ['id' => $categoryId, 'e' => $e['id']]);
+        self::assertSellable($e, $t, $qty);
+        $available = (int) $t['quantity_total'] - (int) $t['quantity_reserved'] - (int) $t['quantity_sold'];
+        return [
+            'ticket_type_id' => $t['id'], 'name' => $t['name'], 'quantity' => $qty,
+            'unit_price_kz' => (float) $t['price_kz'], 'total_kz' => (float) number_format((float) $t['price_kz'] * $qty, 2, '.', ''),
+            'available' => $available, 'max_per_order' => min((int) $t['max_per_order'], $available),
+            'persons_per_ticket' => (int) $t['persons_per_ticket'],
+        ];
+    }
+
     // ------------------------------------------------------------------ criação
     public static function create(Request $req): array
     {
@@ -110,34 +180,10 @@ final class OrderService
                 // Bloqueio do evento (capacidade global) e da categoria (stock): serializa compras concorrentes.
                 $e = Db::one('SELECT * FROM events WHERE id = :id FOR UPDATE', ['id' => SettingsService::EVENT_ID]);
                 $t = Db::one('SELECT * FROM ticket_categories WHERE id = :id AND event_id = :e FOR UPDATE', ['id' => $categoryId, 'e' => $e['id']]);
-                if (!$t || !$t['published']) {
-                    throw new ApiError('INGRESSO_INEXISTENTE', 422);
-                }
-                if (($t['sale_mode'] ?? 'directo') === 'consulta') {
-                    // VIP: só por proposta aprovada pela organização (VipService)
-                    throw new ApiError('INGRESSO_POR_CONSULTA', 422);
-                }
-                if ((int) $t['quantity_total'] === 0) {
-                    throw new ApiError('DISPONIBILIDADE_POR_ANUNCIAR', 409);
-                }
+                self::assertSellable($e, $t, $qty);
                 $now = time();
-                if (!$e['sales_open'] || $t['price_kz'] === null
-                    || ($t['sales_start'] !== null && strtotime($t['sales_start'] . ' UTC') > $now)
-                    || ($t['sales_end'] !== null && strtotime($t['sales_end'] . ' UTC') <= $now)) {
-                    throw new ApiError('VENDAS_FECHADAS', 409);
-                }
-                // Sem coordenadas de pagamento validadas pela organização não se aceitam pedidos
-                if (!SettingsService::paymentReady()) {
-                    throw new ApiError('PAGAMENTO_POR_VALIDAR', 409);
-                }
-                if ($qty < 1 || $qty > (int) $t['max_per_order']) {
-                    throw new ApiError('QUANTIDADE_INVALIDA', 422);
-                }
                 if ($guests < $qty || $guests > $qty * (int) $t['persons_per_ticket']) {
                     throw new ApiError('CONVIDADOS_INVALIDO', 422);
-                }
-                if ((int) $t['quantity_total'] - (int) $t['quantity_reserved'] - (int) $t['quantity_sold'] < $qty) {
-                    throw new ApiError('ESGOTADO', 409);
                 }
                 if ($e['capacity'] !== null) {
                     $used = (int) Db::value("SELECT COALESCE(SUM(guests_total),0) FROM orders WHERE event_id = :e AND status <> 'cancelado'", ['e' => $e['id']]);

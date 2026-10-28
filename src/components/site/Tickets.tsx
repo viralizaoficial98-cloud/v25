@@ -1,9 +1,9 @@
 import { lazy, Suspense, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Check, Crown, Hourglass, ShieldCheck, Sparkles, Ticket, Users } from 'lucide-react';
 import { Alert, Badge, CmsHeading, EmptyState, Spinner } from '@/components/ui/misc';
 import { buttonVariants, Button } from '@/components/ui/button';
+import { ticketState } from '@/lib/ticketState';
 import { cn } from '@/lib/cn';
 import { fetchTicketTypes } from '@/lib/api';
 import { formatDateTime, formatKz } from '@/lib/format';
@@ -13,27 +13,29 @@ import { useSite } from '@/hooks/useSite';
 import { errorMessage } from '@/lib/errors';
 import type { PublicTicketType } from '@/lib/types';
 
-// Formulário VIP (inclui a validação de telefones) carregado só quando é aberto
+// Popup de compra e formulário VIP carregados só quando são abertos
+const CheckoutModal = lazy(() => import('@/components/checkout/CheckoutModal'));
 const VipRequestDialog = lazy(() => import('@/components/vip/VipRequestDialog').then((m) => ({ default: m.VipRequestDialog })));
 
 function availabilityLabel(t: PublicTicketType) {
   if (t.sale_mode === 'consulta') return 'Disponibilidade limitada · sujeito a aprovação';
   if (!t.stock_defined) return 'Disponibilidade a anunciar';
-  if (t.available <= 0) return 'Esgotado';
+  if (t.sales_status === 'esgotadas' || t.available <= 0) return 'Esgotado';
+  if (t.sales_status === 'suspensas') return 'Vendas suspensas';
   return `${t.available} de ${t.quantity_total} disponíveis`;
 }
 
-function TicketCard({ t, index, onVip }: { t: PublicTicketType; index: number; onVip: () => void }) {
+function TicketCard({ t, index, onVip, onBuy }: { t: PublicTicketType; index: number; onVip: () => void; onBuy: () => void }) {
   const reduce = useReducedMotion();
   const site = useSite().content.tickets;
   const { settings: s } = useSettings();
   const vip = t.sale_mode === 'consulta';
   const featured = vip || /premium/i.test(t.name);
-  const soldOut = !vip && t.stock_defined && t.available <= 0;
-  const notYet = t.sales_start && new Date(t.sales_start) > new Date();
-  // O servidor decide (on_sale); o browser confirma ainda stock definido e disponível
-  const canBuy = !vip && s.sales_open && t.on_sale && t.stock_defined && t.available > 0;
-  const low = canBuy && t.quantity_total > 0 && t.available / t.quantity_total <= 0.15;
+  // O servidor decide (on_sale); aqui escolhe-se a mensagem verdadeira de cada estado
+  const st = ticketState(t, s.sales_open);
+  const canBuy = !vip && st.canBuy;
+  const soldOut = !vip && st.tone === 'bad';
+  const low = canBuy && st.tone === 'low';
 
   return (
     <motion.li
@@ -109,12 +111,12 @@ function TicketCard({ t, index, onVip }: { t: PublicTicketType; index: number; o
             </p>
           </>
         ) : canBuy ? (
-          <Link to={`/checkout?tipo=${t.id}`} className={cn(buttonVariants({ size: 'lg' }), 'w-full')}>
+          <Button size="lg" className="w-full" onClick={onBuy} aria-haspopup="dialog">
             {site.buy_label}
-          </Link>
+          </Button>
         ) : (
-          <span className={cn(buttonVariants({ variant: 'subtle', size: 'lg' }), 'pointer-events-none w-full')}>
-            {soldOut ? 'Esgotado' : notYet ? `Vendas a partir de ${formatDateTime(t.sales_start!)}` : !t.stock_defined ? 'Disponibilidade a anunciar' : 'Brevemente'}
+          <span aria-disabled="true" className={cn(buttonVariants({ variant: 'subtle', size: 'lg' }), 'pointer-events-none w-full')}>
+            {st.label}
           </span>
         )}
       </div>
@@ -127,6 +129,7 @@ export function Tickets() {
   const site = useSite().content.tickets;
   const { data = [], loading, error } = useAsync(fetchTicketTypes, []);
   const [vipOpen, setVipOpen] = useState(false);
+  const [buying, setBuying] = useState<string | null>(null);
   const anyDirect = data.some((t) => t.sale_mode === 'directo');
 
   return (
@@ -151,7 +154,7 @@ export function Tickets() {
             )}
             <ul className={cn('grid gap-6', data.length === 1 ? 'mx-auto max-w-md' : data.length === 2 ? 'mx-auto max-w-4xl md:grid-cols-2' : 'md:grid-cols-2 xl:grid-cols-3')}>
               {data.map((t, i) => (
-                <TicketCard key={t.id} t={t} index={i} onVip={() => setVipOpen(true)} />
+                <TicketCard key={t.id} t={t} index={i} onVip={() => setVipOpen(true)} onBuy={() => setBuying(t.id)} />
               ))}
             </ul>
             {site.note && (
@@ -163,6 +166,11 @@ export function Tickets() {
           </>
         )}
       </div>
+      {buying && (
+        <Suspense fallback={null}>
+          <CheckoutModal ticketTypeId={buying} open={!!buying} onOpenChange={(v) => !v && setBuying(null)} />
+        </Suspense>
+      )}
       {vipOpen && (
         <Suspense fallback={null}>
           <VipRequestDialog open={vipOpen} onOpenChange={setVipOpen} />
